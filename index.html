@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="km">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធវត្តមានបុគ្គលិក</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom Modal */
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .modal-hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .modal-visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        /* View Transitions */
+        .view {
+            /* JavaScript នឹងគ្រប់គ្រង display */
+            animation: fadeIn 0.5s ease;
+        }
+
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<!-- កែសម្រួល៖ ប្តូរ p-4 ទៅ p-0 សម្រាប់ Mobile និងកំណត់ h-screen -->
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-0 md:p-4">
+
+    <!-- កែសម្រួល៖ កំណត់ h-screen សម្រាប់ Mobile, flex flex-col -->
+    <div class="max-w-md w-full h-screen md:h-auto md:min-h-[700px] md:max-h-[90vh] bg-white md:rounded-2xl shadow-xl overflow-hidden flex flex-col">
+
+        <!-- Main Loading View -->
+        <!-- កែសម្រួល៖ បន្ថែម flex-1 -->
+        <div id="loadingView" class="view p-8 flex flex-col items-center justify-center min-h-[400px] flex-1">
+            <div class="loader"></div>
+            <p class="mt-4 text-gray-600 text-lg">កំពុងទាញទិន្នន័យបុគ្គលិក...</p>
+            <p class="text-sm text-gray-500">សូមរង់ចាំបន្តិច</p>
+        </div>
+
+        <!-- Employee List View -->
+        <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 -->
+        <div id="employeeListView" class="view flex flex-col flex-1" style="display: none;">
+            <div class="p-6 bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+                <h1 class="text-2xl font-bold text-center">ជ្រើសរើសបុគ្គលិក</h1>
+            </div>
+            
+            <div class="p-4 relative">
+                <input type="text" id="searchInput"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="វាយឈ្មោះ ឬអត្តលេខ..."
+                    autocomplete="off">
+                
+                <div id="employeeListContainer" 
+                     class="absolute z-10 w-full left-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-y-auto p-2 space-y-1 hidden">
+                    <!-- Employee cards (តូចៗ) will be injected here -->
+                </div>
+            </div>
+            <!-- កែសម្រួល៖ បន្ថែម div នេះដើម្បីរុញ Search Bar ឡើងលើ -->
+            <div class="flex-1"></div>
+        </div>
+
+        <!-- Attendance View -->
+        <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 -->
+        <div id="attendanceView" class="view flex flex-col flex-1" style="display: none;">
+            <!-- Header -->
+            <div class="p-6 flex justify-between items-center">
+                <h1 id="welcomeMessage" class="text-2xl font-bold text-gray-800">សូមស្វាគមន៍</h1>
+                <button id="logoutButton"
+                    class="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    ចាកចេញ
+                </button>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="px-6 pb-6">
+                <!-- កែសម្រួល៖ ដក 'space-x-4' និង 'flex' ចេញ -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg p-5">
+                    <div class="flex items-center space-x-4 mb-4"> <!-- ដាក់រូប និង ឈ្មោះ ក្នុង flex នេះ -->
+                        <img id="profileImage" src="https://placehold.co/80x80/e2e8f0/64748b?text=Profile"
+                            onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=Error'"
+                            class="w-20 h-20 rounded-full border-4 border-white object-cover shadow-md">
+                        <div>
+                            <h2 id="profileName" class="text-2xl font-bold">ឈ្មោះបុគ្គលិក</h2>
+                            <p id="profileId" class="text-sm opacity-90">អត្តលេខ: </p>
+                            <p id="profileGender" class="text-sm opacity-90">ភេទ: </p>
+                        </div>
+                    </div>
+                    <!-- ព័ត៌មានបន្ថែម (UI ថ្មី) -->
+                    <div class="space-y-1 text-sm opacity-90">
+                        <p id="profileDepartment" class="font-medium">ផ្នែក: </p>
+                        <p id="profileGroup" class="font-medium">ក្រុម: </p>
+                        <p id="profileGrade" class="font-medium">ថ្នាក់: </p>
+                        <p id="profileShift" class="text-base font-bold text-yellow-300 mt-2">វេនថ្ងៃនេះ: </p>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Action Buttons -->
+            <div class="px-6 pb-6 grid grid-cols-2 gap-4">
+                <button id="checkInButton"
+                    class="flex items-center justify-center space-x-2 bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-green-600 transition-all transform hover:scale-105 disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    <span>ចុះវត្តមានចូល</span>
+                </button>
+                <button id="checkOutButton"
+                    class="flex items-center justify-center space-x-2 bg-red-500 text-white font-bold py-4 rounded-lg shadow-lg hover:bg-red-600 transition-all transform hover:scale-105 disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16l4-4m0 0l-4-4m4 4H3m5 4v1a3 3 0 003 3h6a3 3 0 003-3V7a3 3 0 00-3-3h-6a3 3 0 00-3 3v1" />
+                    </svg>
+                    <span>ចុះវត្តមានចេញ</span>
+                </button>
+            </div>
+
+            <!-- Status Message -->
+            <p id="attendanceStatus" class="text-center text-sm text-gray-500 pb-4 px-6 h-5"></p> <!-- h-5 សម្រាប់រក្សាកម្ពស់ -->
+
+            <!-- History Section -->
+            <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 overflow-hidden -->
+            <div class="px-6 pb-6 flex flex-col flex-1 overflow-hidden">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">ប្រវត្តិវត្តមានថ្ងៃនេះ</h3>
+                
+                <!-- កែសម្រួល៖ បន្ថែម overflow-y-auto flex-1 -->
+                <div class="shadow-sm border border-gray-200 rounded-lg overflow-y-auto flex-1">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0"> <!-- បន្ថែម sticky top-0 -->
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    កាលបរិច្ឆេទ
+                                </th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    ចូល
+                                </th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                    ចេញ
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be injected here -->
+                            <tr id="noHistoryRow">
+                                <td colspan="3" class="px-4 py-4 text-center text-gray-500">
+                                    មិនទាន់មានទិន្នន័យថ្ងៃនេះ
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal (UI ដើម V1) -->
+    <div id="customModal"
+        class="modal modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
+            <div id="modalHeader" class="p-6">
+                <h3 id="modalTitle" class="text-2xl font-bold text-center text-gray-800"></h3>
+            </div>
+            <div class="p-6 pt-0">
+                <p id="modalMessage" class="text-center text-gray-600"></p>
+            </div>
+            <div class="p-4 bg-gray-50">
+                <button id="modalCloseButton"
+                    class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                    យល់ព្រម
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // នាំចូល Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import {
+            getAuth,
+            signInAnonymously,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            updateDoc,
+            collection,
+            onSnapshot,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Global Variables ---
+        let db, auth;
+        let allEmployees = []; // ផ្ទុកបុគ្គលិកទាំងអស់ពី Google Sheet
+        let globalAttendanceList = []; // ផ្ទុកប្រវត្តិវត្តមានទាំងអស់
+        let currentUser = null; // បុគ្គលិកដែលបានជ្រើសរើស
+        let currentUserShift = null; // *** ថ្មី៖ វេនធ្វើការសម្រាប់ថ្ងៃនេះ ***
+        let attendanceCollectionRef = null; // Reference ទៅ Firestore collection
+        let attendanceListener = null; // Unsubscribe function សម្រាប់ onSnapshot
+
+        // --- Google Sheet Configuration (*** កែសម្រួលធំ ***) ---
+        const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
+        const SHEET_NAME = 'DIList';
+        // កែសម្រួល៖ Range ទៅ E9:AI (Col E ដល់ AI)
+        const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
+        const COL_INDEX = {
+            ID: 0,      // E: អត្តលេខ
+            GROUP: 2,   // G: ក្រុម
+            NAME: 7,    // L: ឈ្មោះ
+            GENDER: 9,  // N: ភេទ
+            GRADE: 13,  // R: ថ្នាក់
+            DEPT: 14,   // S: ផ្នែកការងារ
+            PHOTO: 22,  // AA: រូបថត
+            SHIFT_MON: 24, // AC: ចន្ទ
+            SHIFT_TUE: 25, // AD: អង្គារ៍
+            SHIFT_WED: 26, // AE: ពុធ
+            SHIFT_THU: 27, // AF: ព្រហស្បត្តិ៍
+            SHIFT_FRI: 28, // AG: សុក្រ
+            SHIFT_SAT: 29, // AH: សៅរ៍
+            SHIFT_SUN: 30  // AI: អាទិត្យ
+        };
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
+            authDomain: "checkme-10e18.firebaseapp.com",
+            projectId: "checkme-10e18",
+            storageBucket: "checkme-10e18.firebasestorage.app",
+            messagingSenderId: "1030447497157",
+            appId: "1:1030447497157:web:9792086df1e864559fd5ac",
+            measurementId: "G-QCJ2JH4WH6"
+        };
+        
+        // --- DOM Elements (*** កែសម្រួល៖ បន្ថែម UI ថ្មី ***) ---
+        const loadingView = document.getElementById('loadingView');
+        const employeeListView = document.getElementById('employeeListView');
+        const attendanceView = document.getElementById('attendanceView');
+        
+        const searchInput = document.getElementById('searchInput');
+        const employeeListContainer = document.getElementById('employeeListContainer');
+        
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const logoutButton = document.getElementById('logoutButton');
+        const profileImage = document.getElementById('profileImage');
+        const profileName = document.getElementById('profileName');
+        const profileId = document.getElementById('profileId');
+        // UI ថ្មី
+        const profileGender = document.getElementById('profileGender');
+        const profileDepartment = document.getElementById('profileDepartment');
+        const profileGroup = document.getElementById('profileGroup');
+        const profileGrade = document.getElementById('profileGrade');
+        const profileShift = document.getElementById('profileShift');
+        
+        const checkInButton = document.getElementById('checkInButton');
+        const checkOutButton = document.getElementById('checkOutButton');
+        const attendanceStatus = document.getElementById('attendanceStatus');
+        
+        const historyTableBody = document.getElementById('historyTableBody');
+        const noHistoryRow = document.getElementById('noHistoryRow');
+
+        // Modal Elements
+        const customModal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCloseButton = document.getElementById('modalCloseButton');
+
+        // --- Helper Functions ---
+
+        /**
+         * ប្តូរផ្ទាំង View
+         */
+        function changeView(viewId) {
+            loadingView.style.display = 'none';
+            employeeListView.style.display = 'none';
+            attendanceView.style.display = 'none';
+
+            if (viewId === 'loadingView') {
+                loadingView.style.display = 'flex';
+            } else if (viewId === 'employeeListView') {
+                employeeListView.style.display = 'flex';
+            } else if (viewId === 'attendanceView') {
+                attendanceView.style.display = 'flex';
+            }
+        }
+
+        /**
+         * បង្ហាញ Modal សារ
+         */
+        function showMessage(title, message, isError = false) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalTitle.classList.toggle('text-red-600', isError);
+            modalTitle.classList.toggle('text-gray-800', !isError);
+            customModal.classList.remove('modal-hidden');
+            customModal.classList.add('modal-visible');
+        }
+
+        /**
+         * បិទ Modal សារ
+         */
+        function hideMessage() {
+            customModal.classList.add('modal-hidden');
+            customModal.classList.remove('modal-visible');
+        }
+
+        /**
+         * យក YYYY-MM-DD
+         */
+        function getTodayDateString(date = new Date()) {
+            return date.toISOString().split('T')[0];
+        }
+
+        /**
+         * យក HH:MM AM/PM
+         */
+        function formatTime(date) {
+            if (!date) return '--:--:--';
+            try {
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            } catch (e) {
+                console.error('Invalid date object:', date);
+                return 'Invalid Time';
+            }
+        }
+
+        /**
+         * យក DD-MMM-YYYY
+         */
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        function formatDate(date) {
+            if (!date) return '';
+            try {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = monthNames[date.getMonth()];
+                const year = date.getFullYear();
+                return `${day}-${month}-${year}`;
+            } catch (e) {
+                console.error('Invalid date for formatDate:', date);
+                return 'Invalid Date';
+            }
+        }
+        
+        /**
+         * *** ថ្មី៖ ពិនិត្យពេលវេលាស្កេន ធៀបនឹងវេន (Shift) ***
+         * @param {string} shiftType (e.g., "ពេញម៉ោង", "Uptime")
+         * @param {string} checkType ("checkIn" or "checkOut")
+         * @returns {boolean} (True = ក្នុងម៉ោង, False = ក្រៅម៉ោង)
+         */
+        function checkShiftTime(shiftType, checkType) {
+            if (shiftType === 'Uptime') {
+                return true; // វេន Uptime អាចស្កេនពេលណាក៏បាន
+            }
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            // បំប្លែងម៉ោងបច្ចុប្បន្នទៅជាទសភាគ (e.g., 6:50 AM -> 6.83)
+            const currentTime = currentHour + (currentMinute / 60);
+
+            const shiftRules = {
+                "ពេញម៉ោង": {
+                    checkIn: [6.83, 10.25], // 6:50 AM - 10:15 AM
+                    checkOut: [17.5, 20.25]  // 5:30 PM - 8:15 PM
+                },
+                "ពេលយប់": {
+                    checkIn: [17.66, 19.25], // 5:40 PM - 7:15 PM
+                    checkOut: [20.91, 21.83]  // 8:55 PM - 9:50 PM
+                },
+                "មួយព្រឹក": {
+                    checkIn: [6.83, 10.25], // 6:50 AM - 10:15 AM
+                    checkOut: [11.5, 13.25]  // 11:30 AM - 1:15 PM
+                },
+                "មួយរសៀល": {
+                    checkIn: [11.83, 14.5],  // 11:50 AM - 2:30 PM
+                    checkOut: [17.5, 20.25]   // 5:30 PM - 8:15 PM
+                }
+            };
+            
+            const rules = shiftRules[shiftType];
+            
+            if (!rules) {
+                console.warn(`វេនមិនស្គាល់: "${shiftType}". មិនអនុញ្ញាតឱ្យស្កេន។`);
+                return false; // វេនមិនត្រឹមត្រូវ
+            }
+
+            const [min, max] = rules[checkType];
+            if (currentTime >= min && currentTime <= max) {
+                return true; // ក្នុងម៉ោង
+            }
+
+            console.log(`ក្រៅម៉ោង: ម៉ោងបច្ចុប្បន្ន (${currentTime}) មិនស្ថិតក្នុងចន្លោះ [${min}, ${max}] សម្រាប់វេន "${shiftType}"`);
+            return false; // ក្រៅម៉ោង
+        }
+
+        // --- Main Functions ---
+
+        /**
+         * 1. ចាប់ផ្តើម Firebase
+         */
+        async function initializeAppFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug');
+                await setupAuthListener();
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                showMessage('បញ្ហាធ្ងន់ធ្ងរ', `មិនអាចភ្ជាប់ទៅ Firebase បានទេ: ${error.message}`, true);
+            }
+        }
+
+        /**
+         * 2. ផ្ទៀងផ្ទាត់អ្នកប្រើ (Sign in)
+         */
+        async function setupAuthListener() {
+            return new Promise((resolve, reject) => {
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log('Firebase Auth user signed in:', user.uid);
+                        await fetchGoogleSheetData();
+                        resolve();
+                    } else {
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Firebase Sign In Error:", error);
+                            showMessage('បញ្ហា Sign In', `មិនអាច Sign In ទៅ Firebase បានទេ: ${error.message}`, true);
+                            reject(error);
+                        }
+                    }
+                });
+            });
+        }
+
+        /**
+         * 3. ទាញទិន្នន័យពី Google Sheet (*** កែសម្រួលធំ ***)
+         */
+        async function fetchGoogleSheetData() {
+            changeView('loadingView'); 
+            try {
+                const response = await fetch(GVIZ_URL);
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok (${response.status})`);
+                }
+                let text = await response.text();
+                
+                const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);/s);
+                if (!jsonText || !jsonText[1]) {
+                    throw new Error('Invalid Gviz response format.');
+                }
+                
+                const data = JSON.parse(jsonText[1]);
+                
+                if (data.status === 'error') {
+                    throw new Error(`Google Sheet Error: ${data.errors.map(e => e.detailed_message).join(', ')}`);
+                }
+
+                allEmployees = data.table.rows
+                    .map(row => {
+                        const cells = row.c;
+                        const id = cells[COL_INDEX.ID]?.v;
+                        if (!id) {
+                            return null;
+                        }
+                        // Map ព័ត៌មានថ្មី
+                        return {
+                            id: String(id).trim(),
+                            name: cells[COL_INDEX.NAME]?.v || 'N/A',
+                            department: cells[COL_INDEX.DEPT]?.v || 'N/A',
+                            photoUrl: cells[COL_INDEX.PHOTO]?.v || null,
+                            group: cells[COL_INDEX.GROUP]?.v || 'N/A',
+                            gender: cells[COL_INDEX.GENDER]?.v || 'N/A',
+                            grade: cells[COL_INDEX.GRADE]?.v || 'N/A',
+                            // Map វេនទាំងអស់
+                            shiftMon: cells[COL_INDEX.SHIFT_MON]?.v || null,
+                            shiftTue: cells[COL_INDEX.SHIFT_TUE]?.v || null,
+                            shiftWed: cells[COL_INDEX.SHIFT_WED]?.v || null,
+                            shiftThu: cells[COL_INDEX.SHIFT_THU]?.v || null,
+                            shiftFri: cells[COL_INDEX.SHIFT_FRI]?.v || null,
+                            shiftSat: cells[COL_INDEX.SHIFT_SAT]?.v || null,
+                            shiftSun: cells[COL_INDEX.SHIFT_SUN]?.v || null,
+                        };
+                    })
+                    .filter(emp => emp !== null);
+
+                console.log(`Loaded ${allEmployees.length} employees.`);
+                renderEmployeeList(allEmployees);
+                changeView('employeeListView');
+                
+            } catch (error) {
+                console.error('Fetch Google Sheet Error:', error);
+                showMessage('បញ្ហាទាញទិន្នន័យ', `មិនអាចទាញទិន្នន័យពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន Publish to the web។ Error: ${error.message}`, true);
+            }
+        }
+
+        /**
+         * 4. បង្ហាញបញ្ជីបុគ្គលិក (*** កែសម្រួល៖ បង្ហាញព័ត៌មានថ្មី ***)
+         * @param {Array} employees 
+         */
+        function renderEmployeeList(employees) {
+            employeeListContainer.innerHTML = ''; 
+            employeeListContainer.classList.remove('hidden');
+
+            if (employees.length === 0) {
+                employeeListContainer.innerHTML = `<p class="text-center text-gray-500 p-3">រកមិនឃើញបុគ្គលិកទេ។</p>`;
+                return;
+            }
+
+            employees.forEach(emp => {
+                const card = document.createElement('div');
+                card.className = "flex items-center p-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-all";
+                card.innerHTML = `
+                    <img src="${emp.photoUrl || 'https://placehold.co/48x48/e2e8f0/64748b?text=No+Img'}" 
+                         alt="រូបថត" 
+                         class="w-12 h-12 rounded-full object-cover border-2 border-gray-100 mr-3"
+                         onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'">
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-800">${emp.name}</h3>
+                        <!-- កែសម្រួល៖ បង្ហាញ ក្រុម ជំនួស ផ្នែក -->
+                        <p class="text-xs text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
+                    </div>
+                `;
+                card.onmousedown = () => selectUser(emp);
+                employeeListContainer.appendChild(card);
+            });
+        }
+
+        /**
+         * 5. ជ្រើសរើសអ្នកប្រើប្រាស់ (*** កែសម្រួលធំ៖ គណនាវេន ***)
+         * @param {object} employee 
+         */
+        function selectUser(employee) {
+            console.log('User selected:', employee);
+            currentUser = employee;
+            
+            // *** ថ្មី៖ គណនាវេនធ្វើការសម្រាប់ថ្ងៃនេះ ***
+            const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const dayToShiftKey = [
+                'shiftSun', 'shiftMon', 'shiftTue', 'shiftWed', 'shiftThu', 'shiftFri', 'shiftSat'
+            ];
+            const shiftKey = dayToShiftKey[dayOfWeek];
+            currentUserShift = currentUser[shiftKey] || 'N/A'; // រក្សាទុកវេនថ្ងៃនេះ
+            console.log(`ថ្ងៃនេះ (Day ${dayOfWeek}), វេនគឺ: ${currentUserShift}`);
+
+            // --- Firestore Path ---
+            const firestoreUserId = currentUser.id; 
+            const simpleDataPath = `attendance/${firestoreUserId}/records`;
+            console.log("Using Firestore Path:", simpleDataPath);
+            attendanceCollectionRef = collection(db, simpleDataPath);
+
+            // --- បំពេញព័ត៌មាន Profile (*** កែសម្រួល៖ បំពេញ UI ថ្មី ***) ---
+            welcomeMessage.textContent = `សូមស្វាគមន៍`; 
+            profileImage.src = employee.photoUrl || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Img';
+            profileName.textContent = employee.name;
+            profileId.textContent = `អត្តលេខ: ${employee.id}`;
+            profileGender.textContent = `ភេទ: ${employee.gender}`;
+            profileDepartment.textContent = `ផ្នែក: ${employee.department}`;
+            profileGroup.textContent = `ក្រុម: ${employee.group}`;
+            profileGrade.textContent = `ថ្នាក់: ${employee.grade}`;
+            profileShift.textContent = `វេនថ្ងៃនេះ: ${currentUserShift}`;
+
+            changeView('attendanceView');
+            setupAttendanceListener();
+
+            employeeListContainer.classList.add('hidden');
+            searchInput.value = '';
+        }
+
+        /**
+         * 6. ចាកចេញ (Logout)
+         */
+        function logout() {
+            currentUser = null;
+            currentUserShift = null; // Clear វេន
+            
+            if (attendanceListener) {
+                attendanceListener();
+                attendanceListener = null;
+            }
+            
+            attendanceCollectionRef = null;
+            globalAttendanceList = [];
+            
+            historyTableBody.innerHTML = '';
+            historyTableBody.appendChild(noHistoryRow);
+            searchInput.value = ''; 
+            employeeListContainer.classList.add('hidden'); 
+            
+            changeView('employeeListView');
+        }
+
+        /**
+         * 7. ស្តាប់ការផ្លាស់ប្តូរទិន្នន័យវត្តមានពី Firestore
+         */
+        function setupAttendanceListener() {
+            if (!attendanceCollectionRef) return;
+            
+            if (attendanceListener) {
+                attendanceListener();
+            }
+
+            checkInButton.disabled = true;
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = 'កំពុងទាញប្រវត្តិវត្តមាន...';
+            attendanceStatus.className = 'text-center text-sm text-gray-500 pb-4 px-6 h-5 animate-pulse'; 
+
+            attendanceListener = onSnapshot(attendanceCollectionRef, (querySnapshot) => {
+                globalAttendanceList = [];
+                querySnapshot.forEach((doc) => {
+                    globalAttendanceList.push(doc.data());
+                });
+
+                globalAttendanceList.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+                console.log('Attendance data updated:', globalAttendanceList);
+                renderHistory();
+                updateButtonState(); 
+                
+            }, (error) => {
+                console.error("Error listening to attendance:", error);
+                showMessage('បញ្ហា', 'មិនអាចស្តាប់ទិន្នន័យវត្តមានបានទេ។', true);
+                attendanceStatus.textContent = 'Error';
+                attendanceStatus.className = 'text-center text-sm text-red-500 pb-4 px-6 h-5';
+            });
+        }
+
+        /**
+         * 8. បង្ហាញប្រវត្តិវត្តមាន
+         */
+        function renderHistory() {
+            historyTableBody.innerHTML = ''; 
+            const todayString = getTodayDateString();
+
+            const todayRecord = globalAttendanceList.find(record => record.date === todayString);
+
+            if (!todayRecord) {
+                historyTableBody.appendChild(noHistoryRow); 
+                return;
+            }
+
+            const checkInTime = todayRecord.checkIn || '---';
+            const checkOutTime = todayRecord.checkOut ? todayRecord.checkOut : '<span class="text-gray-400">មិនទាន់ចេញ</span>';
+            const formattedDate = todayRecord.formattedDate || todayRecord.date; 
+            
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50'; 
+            row.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">${formattedDate}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">${checkInTime}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm ${todayRecord.checkOut ? 'text-red-600 font-semibold' : ''}">${checkOutTime}</td>
+            `;
+            historyTableBody.appendChild(row);
+        }
+        
+        /**
+         * 9. Update ស្ថានភាពប៊ូតុង Check-in/Out (*** កែសម្រួល៖ បញ្ចូល Logic ក្រៅម៉ោង ***)
+         */
+        function updateButtonState() {
+            const todayString = getTodayDateString();
+            const todayData = globalAttendanceList.find(record => record.date === todayString);
+            
+            // ពិនិត្យម៉ោង
+            const canCheckIn = checkShiftTime(currentUserShift, 'checkIn');
+            const canCheckOut = checkShiftTime(currentUserShift, 'checkOut');
+
+            // Reset
+            checkInButton.disabled = false;
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = 'សូមធ្វើការ Check-in';
+            attendanceStatus.className = 'text-center text-sm text-blue-700 pb-4 px-6 h-5'; 
+
+            if (!canCheckIn && !todayData) {
+                 attendanceStatus.textContent = `ក្រៅម៉ោង Check-in (${currentUserShift})`;
+                 attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5';
+            }
+
+            if (todayData) {
+                if (todayData.checkIn) {
+                    checkInButton.disabled = true;
+                    checkOutButton.disabled = false; // បើកសិន
+                    attendanceStatus.textContent = `បាន Check-in ម៉ោង: ${todayData.checkIn}`;
+                    attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
+                    
+                    if (!canCheckOut && !todayData.checkOut) {
+                        attendanceStatus.textContent += ` (ក្រៅម៉ោង Check-out)`;
+                        attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5';
+                    }
+                }
+                if (todayData.checkOut) {
+                    checkOutButton.disabled = true;
+                    attendanceStatus.textContent = `បាន Check-out ម៉ោង: ${todayData.checkOut}`;
+                    attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+                }
+            }
+        }
+
+        /**
+         * 10. ដំណើរការ Check In (*** កែសម្រួល៖ ពិនិត្យវេន & រក្សាទុកទិន្នន័យថ្មី ***)
+         */
+        async function handleCheckIn() {
+            if (!attendanceCollectionRef || !currentUser) return;
+            
+            // *** ថ្មី៖ ពិនិត្យវេនមុនគេ ***
+            if (!checkShiftTime(currentUserShift, 'checkIn')) {
+                showMessage('បញ្ហា', `ក្រៅម៉ោង Check-in សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+                return; // បញ្ឈប់
+            }
+            
+            checkInButton.disabled = true;
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
+            attendanceStatus.classList.add('animate-pulse');
+
+            const now = new Date();
+            const todayDocId = getTodayDateString(now);
+            
+            // *** កែសម្រួល៖ រក្សាទុកទិន្នន័យថ្មីទាំងអស់ ***
+            const data = {
+                // ព័ត៌មានបុគ្គលិក
+                employeeId: currentUser.id,
+                employeeName: currentUser.name,
+                department: currentUser.department,
+                group: currentUser.group,
+                grade: currentUser.grade,
+                gender: currentUser.gender,
+                shift: currentUserShift, // វេនថ្ងៃនេះ
+                
+                // ព័ត៌មានពេលវេលា (ទម្រង់ ISO សម្រាប់ Query)
+                date: todayDocId, 
+                checkInTimestamp: now.toISOString(), 
+                checkOutTimestamp: null,
+
+                // ព័ត៌មានពេលវេលា (ទម្រង់ Format សម្រាប់បង្ហាញ)
+                formattedDate: formatDate(now),
+                checkIn: formatTime(now),
+                checkOut: null
+            };
+
+            try {
+                const todayDocRef = doc(attendanceCollectionRef, todayDocId);
+                await setDoc(todayDocRef, data); 
+            } catch (error) {
+                console.error("Check In Error:", error);
+                showMessage('បញ្ហា', `មិនអាច Check-in បានទេ: ${error.message}`, true);
+                updateButtonState(); 
+            } finally {
+                attendanceStatus.classList.remove('animate-pulse');
+            }
+        }
+
+        /**
+         * 11. ដំណើរការ Check Out (*** កែសម្រួល៖ ពិនិត្យវេន ***)
+         */
+        async function handleCheckOut() {
+            if (!attendanceCollectionRef) return;
+
+            // *** ថ្មី៖ ពិនិត្យវេនមុនគេ ***
+            if (!checkShiftTime(currentUserShift, 'checkOut')) {
+                showMessage('បញ្ហា', `ក្រៅម៉ោង Check-out សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+                return; // បញ្ឈប់
+            }
+
+            checkInButton.disabled = true;
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
+            attendanceStatus.classList.add('animate-pulse');
+
+            const now = new Date();
+            const todayDocId = getTodayDateString(now);
+            
+            const data = {
+                checkOutTimestamp: now.toISOString(),
+                checkOut: formatTime(now)
+            };
+
+            try {
+                const todayDocRef = doc(attendanceCollectionRef, todayDocId);
+                await updateDoc(todayDocRef, data); 
+            } catch (error) {
+                console.error("Check Out Error:", error);
+                showMessage('បញ្ហា', `មិនអាច Check-out បានទេ: ${error.message}`, true);
+                updateButtonState(); 
+            } finally {
+                attendanceStatus.classList.remove('animate-pulse');
+            }
+        }
+
+        // --- Event Listeners ---
+        
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredEmployees = allEmployees.filter(emp => 
+                emp.name.toLowerCase().includes(searchTerm) ||
+                emp.id.toLowerCase().includes(searchTerm)
+            );
+            renderEmployeeList(filteredEmployees); 
+        });
+
+        searchInput.addEventListener('focus', () => {
+            renderEmployeeList(allEmployees); 
+        });
+
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                employeeListContainer.classList.add('hidden');
+            }, 200); 
+        });
+
+
+        logoutButton.addEventListener('click', logout);
+        checkInButton.addEventListener('click', handleCheckIn);
+        checkOutButton.addEventListener('click', handleCheckOut);
+        modalCloseButton.addEventListener('click', hideMessage);
+
+        // --- Initial Call ---
+        document.addEventListener('DOMContentLoaded', initializeAppFirebase);
+
+    </script>
+</body>
+</html>
+
