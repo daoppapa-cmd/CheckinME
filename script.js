@@ -16,19 +16,26 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Global Variables ---
-let db, auth; 
-let allEmployees = []; 
-let globalAttendanceList = []; 
-let currentUser = null; 
-let currentUserShift = null; 
-let attendanceCollectionRef = null; 
-let attendanceListener = null; 
-let currentConfirmCallback = null; 
+let db, auth;
+let allEmployees = [];
+let globalAttendanceList = [];
+let currentUser = null;
+let currentUserShift = null;
+let attendanceCollectionRef = null;
+let attendanceListener = null;
+let currentConfirmCallback = null;
 
-// --- Google Sheet Configuration ---
+// *** ថ្មី: AI & Camera Global Variables ***
+let modelsLoaded = false;
+let currentUserFaceMatcher = null;
+let currentScanAction = null; // 'checkIn' or 'checkOut'
+let videoStream = null;
+let scanInterval = null;
+const FACE_MATCH_THRESHOLD = 0.5; // កំណត់កម្រិតភាពត្រឹមត្រូវ (0.1 = ខ្ពស់, 0.6 = ទាប)
+
+// --- Google Sheet Configuration (ដូចเดิม) ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
-const SHEET_NAME = 'DIList';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
+// ... (COL_INDEX, GVIZ_URL ដូចเดิม)
 const COL_INDEX = {
     ID: 0,    // E: អត្តលេខ
     GROUP: 2,   // G: ក្រុម
@@ -45,8 +52,11 @@ const COL_INDEX = {
     SHIFT_SAT: 29, // AH: សៅរ៍
     SHIFT_SUN: 30  // AI: អាទិត្យ
 };
+const SHEET_NAME = 'DIList';
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
 
-// --- Firebase Configuration ---
+
+// --- Firebase Configuration (ដូចเดิม) ---
 const firebaseConfig = {
     apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
     authDomain: "checkme-10e18.firebaseapp.com",
@@ -57,7 +67,7 @@ const firebaseConfig = {
     measurementId: "G-QCJ2JH4WH6"
 };
 
-// --- តំបន់ទីតាំង (Polygon Geofence) ---
+// --- តំបន់ទីតាំង (Polygon Geofence) (ដូចเดิม) ---
 const allowedAreaCoords = [
     [11.415206789703271, 104.7642005060435],
     [11.41524294053174, 104.76409925265823],
@@ -66,8 +76,9 @@ const allowedAreaCoords = [
 ];
 
 // --- DOM Elements ---
+// ... (DOM Elements ទាំងអស់ដូចเดิม) ...
 const loadingView = document.getElementById('loadingView');
-const loadingText = document.getElementById('loadingText'); 
+const loadingText = document.getElementById('loadingText');
 const employeeListView = document.getElementById('employeeListView');
 const attendanceView = document.getElementById('attendanceView');
 const searchInput = document.getElementById('searchInput');
@@ -91,12 +102,23 @@ const noHistoryRow = document.getElementById('noHistoryRow');
 const customModal = document.getElementById('customModal');
 const modalTitle = document.getElementById('modalTitle');
 const modalMessage = document.getElementById('modalMessage');
-const modalActions = document.getElementById('modalActions'); 
-const modalCancelButton = document.getElementById('modalCancelButton'); 
-const modalConfirmButton = document.getElementById('modalConfirmButton'); 
+const modalActions = document.getElementById('modalActions');
+const modalCancelButton = document.getElementById('modalCancelButton');
+const modalConfirmButton = document.getElementById('modalConfirmButton');
 
-// --- Helper Functions ---
+// *** ថ្មី: Camera Modal DOM Elements ***
+const cameraModal = document.getElementById('cameraModal');
+const videoElement = document.getElementById('videoElement');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const cameraCloseButton = document.getElementById('cameraCloseButton');
+const cameraLoadingText = document.getElementById('cameraLoadingText');
+const cameraLoadingContainer = document.getElementById('cameraLoadingContainer');
 
+
+// --- Helper Functions (ដូចเดิม) ---
+// ... (changeView, showMessage, showConfirmation, hideMessage) ...
+// ... (getTodayDateString, formatTime, formatDate) ...
+// ... (checkShiftTime, getUserLocation, isInsideArea) ...
 function changeView(viewId) {
     loadingView.style.display = 'none';
     employeeListView.style.display = 'none';
@@ -286,7 +308,193 @@ function isInsideArea(lat, lon) {
     return isInside;
 }
 
-// --- Main Functions ---
+
+// --- *** ថ្មី: AI & Camera Functions *** ---
+
+/**
+ * ផ្ទុក AI Models ពី Folder '/Model'
+ */
+async function loadAIModels() {
+    const MODEL_URL = './Model'; // ត្រូវប្រាកដថា Folder នេះមានពិត
+    loadingText.textContent = 'កំពុងទាញយក AI Models...';
+    try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
+        console.log("AI Models Loaded");
+        modelsLoaded = true;
+        // បន្ទាប់ពីផ្ទុក Model រួច ទើបទៅទាញទិន្នន័យបុគ្គលិក
+        await fetchGoogleSheetData();
+    } catch (e) {
+        console.error("Error loading AI models", e);
+        showMessage('បញ្ហាធ្ងន់ធ្ងរ', `មិនអាចទាញយក AI Models បានទេ។ សូមពិនិត្យ Folder 'Model' (M ធំ)។ Error: ${e.message}`, true);
+    }
+}
+
+/**
+ * បង្កើត Face Matcher សម្រាប់បុគ្គលិកដែលបានជ្រើសរើស
+ */
+async function prepareFaceMatcher(imageUrl) {
+    currentUserFaceMatcher = null; // Reset
+    if (!imageUrl || imageUrl.includes('placehold.co')) {
+        console.warn("No valid profile photo. Face scan will be disabled.");
+        return;
+    }
+
+    try {
+        // បង្ហាញ Loading នៅលើ Profile Card (បណ្ដោះអាសន្ន)
+        profileName.textContent = 'កំពុងវិភាគរូបថត...';
+
+        const img = await faceapi.fetchImage(imageUrl);
+        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+                                     .withFaceLandmarks()
+                                     .withFaceDescriptor();
+        
+        if (detection) {
+            currentUserFaceMatcher = new faceapi.FaceMatcher(detection.descriptor);
+            console.log("Face matcher created successfully.");
+        } else {
+            console.warn("Could not find a face in the profile photo.");
+            showMessage('បញ្ហារូបថត', 'រកមិនឃើញមុខនៅក្នុងរូបថត Profile ទេ។ មិនអាចប្រើការស្កេនមុខបានទេ។', true);
+        }
+    } catch (e) {
+        console.error("Error loading profile photo for face matching:", e);
+        showMessage('បញ្ហារូបថត', `មានបញ្ហាក្នុងការទាញយករូបថត Profile: ${e.message}`, true);
+    } finally {
+        // ដាក់ឈ្មោះត្រឡប់មកវិញ
+        if (currentUser) {
+            profileName.textContent = currentUser.name;
+        }
+    }
+}
+
+/**
+ * បង្ហាញ Modal កាមេរ៉ា និងចាប់ផ្តើម Stream
+ */
+async function startFaceScan(action) {
+    currentScanAction = action; // 'checkIn' or 'checkOut'
+
+    if (!modelsLoaded) {
+        showMessage('បញ្ហា', 'AI Models មិនទាន់ផ្ទុករួចរាល់។ សូមរង់ចាំបន្តិច។', true);
+        return;
+    }
+    
+    if (!currentUserFaceMatcher) {
+        showMessage('បញ្ហា', 'មិនអាចស្កេនមុខបានទេ។ អាចមកពីមិនមានរូបថត Profile ឬរូបថតមិនច្បាស់។', true);
+        return;
+    }
+    
+    // បង្ហាញ Modal
+    cameraLoadingText.textContent = 'កំពុងស្នើសុំកាមេរ៉ា...';
+    cameraModal.classList.remove('modal-hidden');
+    cameraModal.classList.add('modal-visible');
+
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: 'user', // ប្រើកាមេរ៉ាមុខ
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            } 
+        });
+        
+        videoElement.srcObject = videoStream;
+        
+        videoElement.onplay = () => {
+            runFaceDetectionLoop();
+        };
+
+    } catch (err) {
+        console.error("Camera Error:", err);
+        showMessage('បញ្ហាកាមេរ៉ា', `មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាត (Allow)។ Error: ${err.message}`, true);
+        hideCameraModal();
+    }
+}
+
+/**
+ * បិទកាមេរ៉ា និង Stream
+ */
+function stopCamera() {
+    if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+    }
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    videoElement.srcObject = null;
+}
+
+/**
+ * បិទ Modal កាមេរ៉ា
+ */
+function hideCameraModal() {
+    stopCamera();
+    cameraModal.classList.add('modal-hidden');
+    cameraModal.classList.remove('modal-visible');
+    // Clear canvas
+    cameraCanvas.getContext('2d').clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+}
+
+/**
+ * ដំណើរការ Loop ស្កេនមុខ
+ */
+function runFaceDetectionLoop() {
+    if (scanInterval) return; // កុំឱ្យ Run ជាន់គ្នា
+
+    const displaySize = { width: videoElement.videoWidth, height: videoElement.videoHeight };
+    faceapi.matchDimensions(cameraCanvas, displaySize);
+
+    scanInterval = setInterval(async () => {
+        if (!videoStream) return; // បើកាមេរ៉ាបិទ គួរតែឈប់
+
+        const detection = await faceapi.detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+                                     .withFaceLandmarks()
+                                     .withFaceDescriptor();
+
+        const resizedDetection = faceapi.resizeResults(detection, displaySize);
+        cameraCanvas.getContext('2d').clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+
+        if (resizedDetection) {
+            // គូសប្រអប់ជុំវិញមុខ
+            faceapi.draw.drawDetections(cameraCanvas, resizedDetection);
+            cameraLoadingText.textContent = 'កំពុងវិភាគ...';
+
+            // ប្រៀបធៀបមុខ
+            const bestMatch = currentUserFaceMatcher.findBestMatch(resizedDetection.descriptor);
+            const matchPercentage = Math.round((1 - bestMatch.distance) * 100);
+
+            if (bestMatch.label !== 'unknown' && bestMatch.distance < FACE_MATCH_THRESHOLD) {
+                // *** ជោគជ័យ ***
+                cameraLoadingText.textContent = `ស្គាល់ជា: ${currentUser.name} (${matchPercentage}%)`;
+                
+                // ឈប់ Loop, បិទកាមេរ៉ា
+                stopCamera();
+                hideCameraModal();
+
+                // បន្តដំណើរការ CheckIn/CheckOut
+                if (currentScanAction === 'checkIn') {
+                    handleCheckIn();
+                } else if (currentScanAction === 'checkOut') {
+                    handleCheckOut();
+                }
+
+            } else {
+                // ស្គាល់ តែមិនមែនជាមនុស្សត្រឹមត្រូវ
+                cameraLoadingText.textContent = `មិនត្រឹមត្រូវ... (${matchPercentage}%)`;
+            }
+        } else {
+            // រកមុខមិនឃើញ
+            cameraLoadingText.textContent = 'រកមិនឃើញផ្ទៃមុខ...';
+        }
+
+    }, 300); // ស្កេនរៀងរាល់ 300ms
+}
+
+
+// --- Main Functions (កែប្រែ) ---
 
 async function initializeAppFirebase() {
     try {
@@ -294,7 +502,7 @@ async function initializeAppFirebase() {
         db = getFirestore(app);
         auth = getAuth(app);
         setLogLevel('debug');
-        await setupAuthListener();
+        await setupAuthListener(); // ដំណើរការ Auth Listener
     } catch (error) {
         console.error("Firebase Init Error:", error);
         showMessage('បញ្ហាធ្ងន់ធ្ងរ', `មិនអាចភ្ជាប់ទៅ Firebase បានទេ: ${error.message}`, true);
@@ -306,7 +514,9 @@ async function setupAuthListener() {
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 console.log('Firebase Auth user signed in:', user.uid);
-                await fetchGoogleSheetData();
+                // *** កែប្រែ: កុំទាញទិន្នន័យបុគ្គលិកភ្លាម ***
+                // *** ផ្ទុក AI Models ជាមុនសិន ***
+                await loadAIModels(); 
                 resolve();
             } else {
                 try {
@@ -323,9 +533,10 @@ async function setupAuthListener() {
 
 async function fetchGoogleSheetData() {
     changeView('loadingView'); 
-    loadingText.textContent = 'កំពុងទាញបញ្ជីបុគ្គលិក...';
+    loadingText.textContent = 'កំពុងទាញបញ្ជីបុគ្គលិក...'; // ឥឡូវ Text នេះបង្ហាញ *បន្ទាប់ពី* ផ្ទុក AI
         
     try {
+        // ... (កូដ Fetch Google Sheet ដូចเดิม) ...
         const response = await fetch(GVIZ_URL);
         if (!response.ok) {
             throw new Error(`Network response was not ok (${response.status})`);
@@ -387,13 +598,13 @@ async function fetchGoogleSheetData() {
         } else {
             changeView('employeeListView'); 
         }
-        
     } catch (error) {
         console.error('Fetch Google Sheet Error:', error);
         showMessage('បញ្ហាទាញទិន្នន័យ', `មិនអាចទាញទិន្នន័យពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន Publish to the web។ Error: ${error.message}`, true);
     }
 }
 
+// ... (renderEmployeeList ដូចเดิม) ...
 function renderEmployeeList(employees) {
     employeeListContainer.innerHTML = ''; 
     employeeListContainer.classList.remove('hidden');
@@ -421,6 +632,10 @@ function renderEmployeeList(employees) {
     });
 }
 
+
+/**
+ * កែប្រែ: ត្រូវហៅ prepareFaceMatcher
+ */
 function selectUser(employee) {
     console.log('User selected:', employee);
     currentUser = employee;
@@ -454,13 +669,18 @@ function selectUser(employee) {
     changeView('attendanceView');
     setupAttendanceListener();
 
+    // *** ថ្មី: រៀបចំ Face Matcher នៅ Background ***
+    prepareFaceMatcher(employee.photoUrl);
+
     employeeListContainer.classList.add('hidden');
     searchInput.value = '';
 }
 
+// ... (logout, setupAttendanceListener, renderHistory, updateButtonState ដូចเดิม) ...
 function logout() {
     currentUser = null;
     currentUserShift = null; 
+    currentUserFaceMatcher = null; //*** ថ្មី: Clear face matcher
     
     localStorage.removeItem('savedEmployeeId');
 
@@ -575,13 +795,15 @@ function updateButtonState() {
     }
 }
 
+
 /**
- * 10. ដំណើរការ Check In
+ * 10. ដំណើរការ Check In (ឥឡូវនេះ ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
  */
 async function handleCheckIn() {
     if (!attendanceCollectionRef || !currentUser) return;
     
     // --- 1. ពិនិត្យវេន (Shift Check) ---
+    // (មុខងារនេះនៅតែសំខាន់)
     if (!checkShiftTime(currentUserShift, 'checkIn')) {
         showMessage('បញ្ហា', `ក្រៅម៉ោង Check-in សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
         return;
@@ -618,6 +840,7 @@ async function handleCheckIn() {
     }
     
     // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
+    // ... (កូដរក្សាទុក ដូចเดิม) ...
     attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
 
     const now = new Date();
@@ -653,7 +876,7 @@ async function handleCheckIn() {
 }
 
 /**
- * 11. ដំណើរការ Check Out
+ * 11. ដំណើរការ Check Out (ឥឡូវនេះ ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
  */
 async function handleCheckOut() {
     if (!attendanceCollectionRef) return;
@@ -665,6 +888,7 @@ async function handleCheckOut() {
     }
 
     // --- 2. ពិនិត្យទីតាំង (Location Check) ---
+    // ... (កូដពិនិត្យទីតាំង ដូចเดิม) ...
     checkInButton.disabled = true;
     checkOutButton.disabled = true;
     attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
@@ -695,6 +919,7 @@ async function handleCheckOut() {
     }
 
     // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
+    // ... (កូដរក្សាទុក ដូចเดิม) ...
     attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
     
     const now = new Date();
@@ -718,8 +943,9 @@ async function handleCheckOut() {
     }
 }
 
-// --- Event Listeners ---
+// --- Event Listeners (កែប្រែ) ---
  
+// ... (Search Listeners ដូចเดิม) ...
 searchInput.addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const filteredEmployees = allEmployees.filter(emp => 
@@ -739,7 +965,7 @@ searchInput.addEventListener('blur', () => {
     }, 200); 
 });
 
-
+// ... (Logout/Exit Listeners ដូចเดิม) ...
 logoutButton.addEventListener('click', () => {
     showConfirmation('ចាកចេញ', 'តើអ្នកប្រាកដជាចង់ចាកចេញមែនទេ? គណនីរបស់អ្នកនឹងមិនត្រូវបានចងចាំទៀតទេ។', 'ចាកចេញ', () => {
         logout();
@@ -754,11 +980,12 @@ exitAppButton.addEventListener('click', () => {
     });
 });
 
-checkInButton.addEventListener('click', handleCheckIn);
-checkOutButton.addEventListener('click', handleCheckOut);
+// *** កែប្រែ: ប៊ូតុង Check-in/Out ឥឡូវត្រូវហៅ startFaceScan ***
+checkInButton.addEventListener('click', () => startFaceScan('checkIn'));
+checkOutButton.addEventListener('click', () => startFaceScan('checkOut'));
 
+// ... (Modal Confirm/Cancel Listeners ដូចเดิม) ...
 modalCancelButton.addEventListener('click', hideMessage);
-
 modalConfirmButton.addEventListener('click', () => {
     if (currentConfirmCallback) {
         currentConfirmCallback(); 
@@ -767,10 +994,13 @@ modalConfirmButton.addEventListener('click', () => {
     }
 });
 
-// --- បានដក Camera Listeners ចេញ ---
+// *** ថ្មី: ប៊ូតុងបិទកាមេរ៉ា ***
+cameraCloseButton.addEventListener('click', hideCameraModal);
 
-// --- Initial Call ---
+
+// --- Initial Call (កែប្រែ) ---
 document.addEventListener('DOMContentLoaded', () => {
+    // *** កែប្រែ: ហៅតែ initializeAppFirebase ទេ ***
+    // loadAIModels() នឹងត្រូវបានហៅពីក្នុង Auth Listener
     initializeAppFirebase();
-    // *** បានដក loadAIModels() ចេញ ***
 });
