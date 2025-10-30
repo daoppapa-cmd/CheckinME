@@ -82,7 +82,7 @@ body {
     justify-content: center;
     
     /* *** បានកែប្រែ (Update ថ្មី) *** */
-    margin-top: 16px; /* បង្កើនគម្លាតទៅ 16px (ជំនួស 8px មុន) */
+    margin-top: 12px; /* បង្កើនគម្លាតទៅ 16px (ជំនួស 8px មុន) */
     
     z-index: 65;
     cursor: pointer;
