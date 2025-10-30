@@ -1,3 +1,4 @@
+// File: script.js
 // នាំចូល Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
@@ -106,7 +107,8 @@ const modalCancelButton = document.getElementById('modalCancelButton');
 const modalConfirmButton = document.getElementById('modalConfirmButton'); 
 
 // --- Processing Modal DOM Elements ---
-const processingModal = document.getElementById('processingModal');
+// (ត្រូវប្រាកដថា ID ទាំងនេះ ត្រូវគ្នានឹង index.html)
+const processingModal = document.getElementById('processingModal'); // ប្រើ ID ពី index.html ថ្មី
 const processingLoader = document.getElementById('processingLoader');
 const processingSuccessIcon = document.getElementById('processingSuccessIcon');
 const processingErrorIcon = document.getElementById('processingErrorIcon');
@@ -399,6 +401,14 @@ function hideProcessingModal() {
  * ទាញយក AI Models
  */
 async function loadAIModels() {
+    // ពិនិត្យមើល global variable មុនពេលព្យាយាម load
+    if (typeof faceapi === 'undefined') {
+        console.error('face-api.js មិនអាចទាញយកបានទេ។ (ប្រហែលជាកំហុស integrity?)');
+        showMessage('បញ្ហាធ្ងន់ធ្ងរ', 'face-api.js មិនអាចទាញយកបានទេ។ សូមពិនិត្យ Console។', true);
+        areModelsLoaded = false;
+        return;
+    }
+    
     if (areModelsLoaded) return;
     
     console.log('Loading AI Models...');
@@ -530,7 +540,12 @@ async function handleCameraCapture() {
         cameraCanvas.width = cameraVideo.videoWidth;
         cameraCanvas.height = cameraVideo.videoHeight;
         const context = cameraCanvas.getContext('2d');
+        // ត្រឡប់ផ្ដេក (Flip horizontally) ព្រោះ video ត្រូវបាន mirror
+        context.translate(cameraCanvas.width, 0);
+        context.scale(-1, 1);
         context.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+        // Reset transform
+        context.setTransform(1, 0, 0, 1, 0, 0);
         
         // 2. វិភាគរកផ្ទៃមុខក្នុងរូបដែលថត (Live Image)
         const detection = await faceapi.detectSingleFace(cameraCanvas, new faceapi.TinyFaceDetectorOptions())
@@ -733,4 +748,375 @@ function renderEmployeeList(employees) {
         card.className = "flex items-center p-3 rounded-xl cursor-pointer hover:bg-blue-50 transition-all shadow-md mb-2 bg-white";
         card.innerHTML = `
             <img src="${emp.photoUrl || 'https://placehold.co/48x48/e2e8f0/64748b?text=No+Img'}" 
-                 alt="
+                 alt="រូបថត" 
+                 class="w-12 h-12 rounded-full object-cover border-2 border-gray-100 mr-3"
+                 onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'"
+                 crossOrigin="anonymous"> <!-- សំខាន់សម្រាប់ AI -->
+            <div>
+                <h3 class="text-md font-semibold text-gray-800">${emp.name}</h3>
+                <p class="text-sm text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
+            </div>
+        `;
+        card.onmousedown = () => selectUser(emp);
+        employeeListContainer.appendChild(card);
+    });
+}
+
+function selectUser(employee) {
+    console.log('User selected:', employee);
+    currentUser = employee;
+    
+    localStorage.setItem('savedEmployeeId', employee.id);
+
+    const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const dayToShiftKey = [
+        'shiftSun', 'shiftMon', 'shiftTue', 'shiftWed', 'shiftThu', 'shiftFri', 'shiftSat'
+    ];
+    const shiftKey = dayToShiftKey[dayOfWeek];
+    currentUserShift = currentUser[shiftKey] || 'N/A'; 
+    console.log(`ថ្ងៃនេះ (Day ${dayOfWeek}), វេនគឺ: ${currentUserShift}`);
+
+    const firestoreUserId = currentUser.id; 
+    const simpleDataPath = `attendance/${firestoreUserId}/records`;
+    console.log("Using Firestore Path:", simpleDataPath);
+    attendanceCollectionRef = collection(db, simpleDataPath);
+
+    // បំពេញព័ត៌មាន Profile
+    welcomeMessage.textContent = `សូមស្វាគមន៍`; 
+    
+    // សំខាន់៖ ត្រូវប្រាកដថា src ត្រូវបាន update មុនពេល AI ព្យាយាមអាន
+    profileImage.src = ''; // បង្ខំឱ្យ browser load ឡើងវិញ
+    profileImage.src = employee.photoUrl || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Img';
+    
+    profileName.textContent = employee.name;
+    profileId.textContent = `អត្តលេខ: ${employee.id}`;
+    profileGender.textContent = `ភេទ: ${employee.gender}`;
+    profileDepartment.textContent = `ផ្នែក: ${employee.department}`;
+    profileGroup.textContent = `ក្រុម: ${employee.group}`;
+    profileGrade.textContent = `ថ្នាក់: ${employee.grade}`;
+    profileShift.textContent = `វេនថ្ងៃនេះ: ${currentUserShift}`;
+
+    changeView('attendanceView');
+    setupAttendanceListener();
+
+    // *** FIX 10: ហៅ Function ស្នើសុំទីតាំង (Prime Location) ពេល Login ***
+    primeLocationPermission();
+
+    employeeListContainer.classList.add('hidden');
+    searchInput.value = '';
+}
+
+function logout() {
+    currentUser = null;
+    currentUserShift = null; 
+    
+    localStorage.removeItem('savedEmployeeId');
+
+    if (attendanceListener) {
+        attendanceListener();
+        attendanceListener = null;
+    }
+    
+    attendanceCollectionRef = null;
+    globalAttendanceList = [];
+    
+    historyTableBody.innerHTML = '';
+    historyTableBody.appendChild(noHistoryRow);
+    searchInput.value = ''; 
+    employeeListContainer.classList.add('hidden'); 
+    
+    changeView('employeeListView');
+}
+
+function setupAttendanceListener() {
+    if (!attendanceCollectionRef) return;
+    
+    if (attendanceListener) {
+        attendanceListener();
+    }
+
+    checkInButton.disabled = true;
+    checkOutButton.disabled = true;
+    attendanceStatus.textContent = 'កំពុងទាញប្រវត្តិវត្តមាន...';
+    attendanceStatus.className = 'text-center text-sm text-gray-500 pb-4 px-6 h-5 animate-pulse'; 
+
+    attendanceListener = onSnapshot(attendanceCollectionRef, (querySnapshot) => {
+        globalAttendanceList = [];
+        querySnapshot.forEach((doc) => {
+            globalAttendanceList.push(doc.data());
+        });
+
+        globalAttendanceList.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+        console.log('Attendance data updated:', globalAttendanceList);
+        renderHistory();
+        updateButtonState(); 
+        
+    }, (error) => {
+        console.error("Error listening to attendance:", error);
+        showMessage('បញ្ហា', 'មិនអាចស្តាប់ទិន្នន័យវត្តមានបានទេ។', true);
+        attendanceStatus.textContent = 'Error';
+        attendanceStatus.className = 'text-center text-sm text-red-500 pb-4 px-6 h-5';
+    });
+}
+
+function renderHistory() {
+    historyTableBody.innerHTML = ''; 
+    const todayString = getTodayDateString();
+
+    const todayRecord = globalAttendanceList.find(record => record.date === todayString);
+
+    if (!todayRecord) {
+        historyTableBody.appendChild(noHistoryRow); 
+        return;
+    }
+
+    const checkInTime = todayRecord.checkIn || '---';
+    const checkOutTime = todayRecord.checkOut ? todayRecord.checkOut : '<span class="text-gray-400">មិនទាន់ចេញ</span>';
+    const formattedDate = todayRecord.formattedDate || todayRecord.date; 
+    
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50'; 
+    row.innerHTML = `
+        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800">${formattedDate}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-semibold">${checkInTime}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm ${todayRecord.checkOut ? 'text-red-600 font-semibold' : ''}">${checkOutTime}</td>
+    `;
+    historyTableBody.appendChild(row);
+}
+        
+function updateButtonState() {
+    const todayString = getTodayDateString();
+    const todayData = globalAttendanceList.find(record => record.date === todayString);
+    
+    // ពិនិត្យ Model មុនពេល enable ប៊ូតុង
+    const canUseButtons = areModelsLoaded;
+    
+    const canCheckIn = checkShiftTime(currentUserShift, 'checkIn');
+    const canCheckOut = checkShiftTime(currentUserShift, 'checkOut');
+
+    // Reset
+    checkInButton.disabled = !canUseButtons; // Disable បើ Model មិនទាន់ load
+    checkOutButton.disabled = true;
+    attendanceStatus.textContent = 'សូមធ្វើការ Check-in';
+    attendanceStatus.className = 'text-center text-sm text-blue-700 pb-4 px-6 h-5'; 
+
+    if (!canUseButtons) {
+        attendanceStatus.textContent = 'កំពុងរង់ចាំ AI Models...';
+        attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5 animate-pulse';
+        return; // ចេញពី function នេះ
+    }
+
+    if (!canCheckIn && !todayData) {
+         attendanceStatus.textContent = `ក្រៅម៉ោង Check-in (${currentUserShift})`;
+         attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5';
+    }
+
+    if (todayData) {
+        if (todayData.checkIn) {
+            checkInButton.disabled = true;
+            checkOutButton.disabled = false; 
+            attendanceStatus.textContent = `បាន Check-in ម៉ោង: ${todayData.checkIn}`;
+            attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
+            
+            if (!canCheckOut && !todayData.checkOut) {
+                attendanceStatus.textContent = `ក្រៅម៉ោង Check-out (${currentUserShift})`;
+                attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5';
+            }
+        }
+        if (todayData.checkOut) {
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = `បាន Check-out ម៉ោង: ${todayData.checkOut}`;
+            attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+        }
+    }
+}
+
+/**
+ * 10. ដំណើរការ Check In (Flow ថ្មី)
+ */
+async function handleCheckIn() {
+    if (!attendanceCollectionRef || !currentUser) return;
+    
+    // --- 1. ពិនិត្យវេន (Shift Check) ---
+    if (!checkShiftTime(currentUserShift, 'checkIn')) {
+        showMessage('បញ្ហា', `ក្រៅម៉ោង Check-in សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+        return;
+    }
+
+    // --- 2. ពិនិត្យផ្ទៃមុខ (Face Verification) ---
+    openFaceVerificationModal('ផ្ទៀងផ្ទាត់ Check-in', () => {
+        // ជំហានបន្ទាប់ (Callback) ពេលផ្ទៀងផ្ទាត់រួច
+        performLocationCheckAndSave('checkIn');
+    });
+}
+
+/**
+ * 11. ដំណើរការ Check Out (Flow ថ្មី)
+ */
+async function handleCheckOut() {
+    if (!attendanceCollectionRef) return;
+
+    // --- 1. ពិនិត្យវេន (Shift Check) ---
+    if (!checkShiftTime(currentUserShift, 'checkOut')) {
+        showMessage('បញ្ហា', `ក្រៅម៉ោង Check-out សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+        return;
+    }
+
+    // --- 2. ពិនិត្យផ្ទៃមុខ (Face Verification) ---
+    openFaceVerificationModal('ផ្ទៀងផ្ទាត់ Check-out', () => {
+        // ជំហានបន្ទាប់ (Callback) ពេលផ្ទៀងផ្ទាត់រួច
+        performLocationCheckAndSave('checkOut');
+    });
+}
+
+/**
+ * 12. ដំណើរការពិនិត្យទីតាំង និងរក្សាទុក (បំបែកចេញ)
+ * នេះគឺជា Logic ចាស់ ដែលឥឡូវត្រូវហៅ *បន្ទាប់ពី* ផ្ទៀងផ្ទាត់ផ្ទៃមុខ
+ */
+async function performLocationCheckAndSave(checkType) {
+    
+    const isCheckIn = (checkType === 'checkIn');
+    
+    // បង្ហាញ Modal ថា "កំពុងពិនិត្យទីតាំង"
+    showProcessingModal('កំពុងពិនិត្យទីតាំង...', 'កម្មវិធីកំពុងស្នើសុំទីតាំងរបស់អ្នក។');
+    
+    let userCoords;
+    try {
+        // --- ពិនិត្យទីតាំង (Location Check) ---
+        userCoords = await getUserLocation();
+        console.log('User location:', userCoords.latitude, userCoords.longitude);
+        
+        if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
+            // បង្ហាញ Error ក្នុង Modal
+            showProcessingError('បរាជ័យ (ក្រៅទីតាំង)', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។');
+            updateButtonState(); // បើកប៊ូតុងឡើងវិញ
+            return; 
+        }
+        
+        console.log('User is INSIDE the area.');
+        
+    } catch (error) {
+        // បង្ហាញ Error ក្នុង Modal (ឧ. បដិសេធ Location)
+        console.error("Location Error:", error.message);
+        showProcessingError('បញ្ហាទីតាំង', error.message);
+        updateButtonState(); // បើកប៊ូតុងឡើងវិញ
+        return; 
+    }
+    
+    // --- ដំណើរការរក្សាទុក (Save to Firebase) ---
+    showProcessingModal(`កំពុងដំណើរការ ${checkType}...`, 'កំពុងរក្សាទុកទិន្នន័យ...');
+
+    const now = new Date();
+    const todayDocId = getTodayDateString(now);
+    const todayDocRef = doc(attendanceCollectionRef, todayDocId);
+    
+    try {
+        if (isCheckIn) {
+            const data = {
+                employeeId: currentUser.id,
+                employeeName: currentUser.name,
+                department: currentUser.department,
+                group: currentUser.group,
+                grade: currentUser.grade,
+                gender: currentUser.gender,
+                shift: currentUserShift, 
+                date: todayDocId, 
+                checkInTimestamp: now.toISOString(), 
+                checkOutTimestamp: null,
+                formattedDate: formatDate(now),
+                checkIn: formatTime(now),
+                checkOut: null,
+                checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
+            };
+            await setDoc(todayDocRef, data); 
+            
+        } else { // Check Out
+            const data = {
+                checkOutTimestamp: now.toISOString(),
+                checkOut: formatTime(now),
+                checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
+            };
+            await updateDoc(todayDocRef, data); 
+        }
+        
+        console.log(`${checkType} successful.`);
+        
+        // បង្ហាញសារជោគជ័យ
+        showProcessingSuccess(`${checkType} ជោគជ័យ!`, `ម៉ោង ${formatTime(now)}`);
+        
+    } catch (error) {
+        console.error(`Error during ${checkType}:`, error);
+        // បង្ហាញ Error ពេលរក្សាទុក
+        showProcessingError(`Error: ${checkType}`, error.message);
+        updateButtonState(); // បើកប៊ូតុងឡើងវិញ
+    } finally {
+        // ទុក Modal ឱ្យបង្ហាញ 2 វិនាទី មុនពេលបិទ (បើជោគជ័យ)
+        if (processingErrorIcon.style.display === 'none') {
+            setTimeout(hideProcessingModal, 2000);
+        }
+    }
+}
+
+
+// --- Event Listeners ---
+
+searchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredEmployees = allEmployees.filter(emp => 
+        emp.name.toLowerCase().includes(searchTerm) ||
+        emp.id.toLowerCase().includes(searchTerm)
+    );
+    renderEmployeeList(filteredEmployees); 
+});
+
+searchInput.addEventListener('focus', () => {
+    renderEmployeeList(allEmployees); 
+});
+
+searchInput.addEventListener('blur', () => {
+    setTimeout(() => {
+        employeeListContainer.classList.add('hidden');
+    }, 200); 
+});
+
+
+logoutButton.addEventListener('click', () => {
+    showConfirmation('ចាកចេញ', 'តើអ្នកប្រាកដជាចង់ចាកចេញមែនទេ? គណនីរបស់អ្នកនឹងមិនត្រូវបានចងចាំទៀតទេ។', 'ចាកចេញ', () => {
+        logout();
+        hideMessage();
+    });
+});
+
+exitAppButton.addEventListener('click', () => {
+    showConfirmation('បិទកម្មវិធី', 'តើអ្នកប្រាកដជាចង់បិទកម្មវិធីមែនទេ?', 'បិទកម្មវិធី', () => {
+        window.close();
+        hideMessage();
+    });
+});
+
+checkInButton.addEventListener('click', handleCheckIn);
+checkOutButton.addEventListener('click', handleCheckOut);
+
+modalCancelButton.addEventListener('click', hideMessage);
+
+modalConfirmButton.addEventListener('click', () => {
+    if (currentConfirmCallback) {
+        currentConfirmCallback(); 
+    } else {
+        hideMessage(); 
+    }
+});
+
+// --- Processing Modal Listener ---
+processingOkButton.addEventListener('click', hideProcessingModal);
+
+// --- Camera Listeners ---
+cameraCancelButton.addEventListener('click', closeFaceVerificationModal);
+cameraCaptureButton.addEventListener('click', handleCameraCapture);
+
+// --- Initial Call ---
+document.addEventListener('DOMContentLoaded', () => {
+    initializeAppFirebase();
+    // ការហៅ loadAIModels() ត្រូវបានផ្លាស់ទីទៅក្នុង setupAuthListener()
+});
