@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធវត្តមានបុគ្គលិក</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
-        
-        <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+        
+        <link rel="stylesheet" href="style.css">
 </head>
 
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-0 md:p-4">
@@ -112,10 +112,10 @@
 
             <p id="attendanceStatus" class="text-center text-sm text-gray-500 pb-4 px-6 h-5"></p>
 
-                      _ <div class="px-6 pb-6 flex flex-col flex-1 overflow-hidden">
+                        <div class="px-6 pb-6 flex flex-col flex-1 overflow-hidden">
                 <h3 class="text-lg font-bold text-gray-800 mb-3">ប្រវត្តិវត្តមានថ្ងៃនេះ</h3>
                 
-                <div class="shadow-sm border border-gray-200 rounded-lg overflow-y-auto flex-1">
+               <div class="shadow-sm border border-gray-200 rounded-lg overflow-y-auto flex-1">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 sticky top-0">
                             <tr>
@@ -125,25 +125,25 @@
                                 <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                                     ចូល
                                 </th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                           <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                                     ចេញ
                                 </th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
-                  _         <tr id="noHistoryRow">
+                            <tr id="noHistoryRow">
                                 <td colspan="3" class="px-4 py-4 text-center text-gray-500">
-                                    មិនទាន់មានទិន្នន័យថ្ងៃនេះ
+                             មិនទាន់មានទិន្នន័យថ្ងៃនេះ
                                 </td>
                             </tr>
-        _             </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
         </div>
         
         <footer class="bg-gray-800 text-white text-center p-3 text-xs shadow-inner">
-            @អភិវឌ្ឍន៍កម្មវិធី IT SUPPORT
+         @អភិវឌ្ឍន៍កម្មវិធី IT SUPPORT
         </footer>
     </div>
 
@@ -153,14 +153,14 @@
             class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
             <div id="modalHeader" class="p-6">
                 <h3 id="modalTitle" class="text-2xl font-bold text-center text-gray-800"></h3>
-            </div>
+         </div>
             <div class="p-6 pt-0">
                 <p id="modalMessage" class="text-center text-gray-600"></p>
             </div>
             <div id="modalActions" class="p-4 bg-gray-50 grid grid-cols-2 gap-3">
-nbsp;               <button id="modalCancelButton"
+                <button id="modalCancelButton"
                     class="w-full bg-gray-200 text-gray-800 font-bold py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">
-                    បោះបង់
+                   បោះបង់
                 </button>
                 <button id="modalConfirmButton"
                     class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
@@ -171,6 +171,5 @@ nbsp;               <button id="modalCancelButton"
     </div>
 
                 <script type="module" src="script.js"></script>
-    
 </body>
 </html>
