@@ -315,7 +315,7 @@ function isInsideArea(lat, lon) {
  * ផ្ទុក AI Models ពី Folder '/Model'
  */
 async function loadAIModels() {
-    const MODEL_URL = './Model'; // ត្រូវប្រាកដថា Folder នេះមានពិត
+    const MODEL_URL = './model'; // ត្រូវប្រាកដថា Folder នេះមានពិត
     loadingText.textContent = 'កំពុងទាញយក AI Models...';
     try {
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
