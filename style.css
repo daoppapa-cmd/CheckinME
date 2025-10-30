@@ -68,7 +68,7 @@ body {
 }
 
 
-/* *** ថ្មី: Styles សម្រាប់ប៊ូតុងថត *** */
+/* *** កែប្រែ: Styles សម្រាប់ប៊ូតុងថត *** */
 .capture-button {
     width: 64px;
     /* ទំហំ 64px */
@@ -80,8 +80,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: -32px;
-    /* ដាក់ឱ្យត្រួតលើ Video បន្តិច */
+    
+    /* *** បានកែប្រែ *** */
+    /* បានលុប margin-top: -32px ចេញ */
+    margin-top: 8px; /* បន្ថែម margin-top ធម្មតា ដើម្បីឱ្យវាស្ថិតនៅក្រោមអក្សរ */
+    
     z-index: 65;
     cursor: pointer;
     transition: all 0.2s ease;
