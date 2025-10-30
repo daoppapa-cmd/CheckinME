@@ -10,7 +10,7 @@
     
     <!-- *** បានបន្ថែម AI Face Detection Library (face-api.js) *** -->
     <!-- នេះគឺជាបណ្ណាល័យស្នូលសម្រាប់ការវិភាគផ្ទៃមុខ -->
-    <!-- *** FIX 9 (កែសម្រួលចុងក្រោយ): កែ xintegrity ទៅ integrity *** -->
+    <!-- *** FIX 11 (កែសម្រួលចុងក្រោយ): កែ xintegrity ទៅ integrity *** -->
     <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js" 
             xintegrity="sha512-E2A6SMozdFR+/N/1L5JKnUFGnJ2lqbrXMPOhCvCUPxL2zKiSAgyE83JSOV1UeNW6/mZ2R/Q2bV2hYCC9BY12Tg==" 
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -252,7 +252,6 @@
     <!-- Modal សម្រាប់សួរបញ្ជាក់ (ដូចមុន) -->
     <div id="customModal"
         class="modal modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-         <!-- ... (មាតិកា HTML ដូចមុន) ... -->
          <div
             class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
             <div id="modalHeader" class="p-6">
@@ -273,6 +272,35 @@
             </div>
         </div>
     </div>
+    
+    <!-- *** Modal សម្រាប់ដំណើរការ (Loading Modal) *** -->
+    <!-- ប្រើសម្រាប់បង្ហាញពេលពិនិត្យទីតាំង និងរក្សាទុក -->
+    <div id="processingModal"
+        class="modal modal-hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+        <div
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
+            <div class="p-8 flex flex-col items-center justify-center">
+                <div id="processingLoader" class="loader"></div>
+                <!-- Icons for success/error -->
+                <svg id="processingSuccessIcon" xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <svg id="processingErrorIcon" xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                
+                <p id="processingMessage" class="mt-4 text-gray-700 text-lg text-center font-semibold">កំពុងពិនិត្យទីតាំង...</p>
+                <p id="processingSubMessage" class="text-sm text-gray-500 text-center">សូមរង់ចាំ... (កុំបិទកម្មវិធី)</p>
+                
+                <!-- ប៊ូតុងយល់ព្រម (សម្រាប់ពេល Error) -->
+                <button id="processingOkButton"
+                    class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors mt-6 hidden">
+                    យល់ព្រម
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- *** បានបន្ថែម Camera Modal *** -->
     <div id="cameraModal"
@@ -417,6 +445,15 @@
         const modalActions = document.getElementById('modalActions'); 
         const modalCancelButton = document.getElementById('modalCancelButton'); 
         const modalConfirmButton = document.getElementById('modalConfirmButton'); 
+        
+        // --- Processing Modal DOM Elements ---
+        const processingModal = document.getElementById('processingModal');
+        const processingLoader = document.getElementById('processingLoader');
+        const processingSuccessIcon = document.getElementById('processingSuccessIcon');
+        const processingErrorIcon = document.getElementById('processingErrorIcon');
+        const processingMessage = document.getElementById('processingMessage');
+        const processingSubMessage = document.getElementById('processingSubMessage');
+        const processingOkButton = document.getElementById('processingOkButton');
         
         // --- Camera Modal DOM Elements ---
         const cameraModal = document.getElementById('cameraModal');
@@ -564,7 +601,7 @@
         function getUserLocation() {
             return new Promise((resolve, reject) => {
                 if (!navigator.geolocation) {
-                    reject(new Error('Geolocation is not supported by your browser.'));
+                    reject(new Error('Geolocation មិនត្រូវបានគាំទ្រទេ។'));
                     return;
                 }
 
@@ -645,6 +682,57 @@
                 { timeout: 5000 } // ឱ្យវារត់ 5 វិនាទីបានហើយ
             );
         }
+        
+        /**
+         * 4.6 បង្ហាញ/បិទ Processing Modal
+         */
+        function showProcessingModal(message, subMessage = "សូមរង់ចាំ...") {
+            processingMessage.textContent = message;
+            processingSubMessage.textContent = subMessage;
+            
+            processingLoader.style.display = 'block';
+            processingSuccessIcon.style.display = 'none';
+            processingErrorIcon.style.display = 'none';
+            processingOkButton.style.display = 'none';
+            
+            processingMessage.classList.remove('text-green-600', 'text-red-600');
+            processingMessage.classList.add('text-gray-700');
+            
+            processingModal.classList.remove('modal-hidden');
+            processingModal.classList.add('modal-visible');
+        }
+
+        function showProcessingSuccess(message, subMessage = "") {
+            processingMessage.textContent = message;
+            processingSubMessage.textContent = subMessage;
+            
+            processingLoader.style.display = 'none';
+            processingSuccessIcon.style.display = 'block';
+            processingErrorIcon.style.display = 'none';
+            processingOkButton.style.display = 'none';
+
+            processingMessage.classList.remove('text-gray-700', 'text-red-600');
+            processingMessage.classList.add('text-green-600');
+        }
+
+        function showProcessingError(message, subMessage) {
+            processingMessage.textContent = message;
+            processingSubMessage.textContent = subMessage;
+            
+            processingLoader.style.display = 'none';
+            processingSuccessIcon.style.display = 'none';
+            processingErrorIcon.style.display = 'block';
+            processingOkButton.style.display = 'block'; // បង្ហាញប៊ូតុង OK
+
+            processingMessage.classList.remove('text-gray-700', 'text-green-600');
+            processingMessage.classList.add('text-red-600');
+        }
+        
+        function hideProcessingModal() {
+             processingModal.classList.add('modal-hidden');
+             processingModal.classList.remove('modal-visible');
+        }
+
 
         // --- AI & Camera Functions ---
 
@@ -1216,38 +1304,34 @@
             
             const isCheckIn = (checkType === 'checkIn');
             
-            // --- ពិនិត្យទីតាំង (Location Check) ---
-            checkInButton.disabled = true;
-            checkOutButton.disabled = true;
-            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
-            attendanceStatus.classList.add('animate-pulse');
-
+            // បង្ហាញ Modal ថា "កំពុងពិនិត្យទីតាំង"
+            showProcessingModal('កំពុងពិនិត្យទីតាំង...', 'កម្មវិធីកំពុងស្នើសុំទីតាំងរបស់អ្នក។');
+            
             let userCoords;
             try {
+                // --- ពិនិត្យទីតាំង (Location Check) ---
                 userCoords = await getUserLocation();
                 console.log('User location:', userCoords.latitude, userCoords.longitude);
                 
                 if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
-                    showMessage('បញ្ហាទីតាំង', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។', true);
-                    updateButtonState(); 
-                    attendanceStatus.classList.remove('animate-pulse');
-                    attendanceStatus.textContent = 'បរាជ័យ (ក្រៅទីតាំង)';
-                    attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+                    // បង្ហាញ Error ក្នុង Modal
+                    showProcessingError('បរាជ័យ (ក្រៅទីតាំង)', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។');
+                    updateButtonState(); // បើកប៊ូតុងឡើងវិញ
                     return; 
                 }
                 
                 console.log('User is INSIDE the area.');
                 
             } catch (error) {
+                // បង្ហាញ Error ក្នុង Modal (ឧ. បដិសេធ Location)
                 console.error("Location Error:", error.message);
-                showMessage('បញ្ហាទីតាំង', error.message, true);
-                updateButtonState(); 
-                attendanceStatus.classList.remove('animate-pulse');
+                showProcessingError('បញ្ហាទីតាំង', error.message);
+                updateButtonState(); // បើកប៊ូតុងឡើងវិញ
                 return; 
             }
             
             // --- ដំណើរការរក្សាទុក (Save to Firebase) ---
-            attendanceStatus.textContent = `កំពុងដំណើរការ ${checkType}...`;
+            showProcessingModal(`កំពុងដំណើរការ ${checkType}...`, 'កំពុងរក្សាទុកទិន្នន័យ...');
 
             const now = new Date();
             const todayDocId = getTodayDateString(now);
@@ -1284,12 +1368,19 @@
                 
                 console.log(`${checkType} successful.`);
                 
+                // បង្ហាញសារជោគជ័យ
+                showProcessingSuccess(`${checkType} ជោគជ័យ!`, `ម៉ោង ${formatTime(now)}`);
+                
             } catch (error) {
                 console.error(`Error during ${checkType}:`, error);
-                showMessage('បញ្ហា', `មិនអាច ${checkType} បានទេ: ${error.message}`, true);
-                updateButtonState(); 
+                // បង្ហាញ Error ពេលរក្សាទុក
+                showProcessingError(`Error: ${checkType}`, error.message);
+                updateButtonState(); // បើកប៊ូតុងឡើងវិញ
             } finally {
-                attendanceStatus.classList.remove('animate-pulse');
+                // ទុក Modal ឱ្យបង្ហាញ 2 វិនាទី មុនពេលបិទ (បើជោគជ័យ)
+                if (processingErrorIcon.style.display === 'none') {
+                    setTimeout(hideProcessingModal, 2000);
+                }
             }
         }
 
@@ -1342,6 +1433,9 @@
                 hideMessage(); 
             }
         });
+        
+        // --- Processing Modal Listener ---
+        processingOkButton.addEventListener('click', hideProcessingModal);
         
         // --- Camera Listeners ---
         cameraCancelButton.addEventListener('click', closeFaceVerificationModal);
