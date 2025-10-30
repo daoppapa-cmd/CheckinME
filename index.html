@@ -7,7 +7,14 @@
     <title>ប្រព័ន្ធវត្តមានបុគ្គលិក</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- *** បានដក AI Face Detection Library ចេញ *** -->
+    
+    <!-- *** បានបន្ថែម AI Face Detection Library (face-api.js) *** -->
+    <!-- នេះគឺជាបណ្ណាល័យស្នូលសម្រាប់ការវិភាគផ្ទៃមុខ -->
+    <!-- *** FIX 7: កែ xintegrity ទៅ integrity (កែពិតប្រាកដ) *** -->
+    <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js" 
+            xintegrity="sha512-E2A6SMozdFR+/N/1L5JKnUFGnJ2lqbrXMPOhCvCUPxL2zKiSAgyE83JSOV1UeNW6/mZ2R/Q2bV2hYCC9BY12Tg==" 
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
     <style>
         body {
             font-family: 'Kantumruy Pro', sans-serif;
@@ -68,6 +75,30 @@
                 transform: translateY(0);
             }
         }
+        
+        /* *** ម៉ូដសម្រាប់ Camera Modal *** */
+        /* ធានាថាកាមេរ៉ាបង្ហាញពេញ និងត្រឹមត្រូវ */
+        #cameraVideo {
+            width: 100%;
+            height: auto;
+            transform: scaleX(-1); /* ត្រឡប់កាមេរ៉ាមុខឱ្យដូចកញ្ចក់ */
+            border-radius: 12px;
+        }
+        #cameraOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            border-radius: 12px;
+        }
     </style>
 </head>
 
@@ -85,7 +116,8 @@
 
         <!-- Employee List View -->
         <div id="employeeListView" class="view flex flex-col flex-1" style="display: none;">
-            <div class="p-6 pt-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white flex flex-col items-center shadow-md">
+            <!-- ... (មាតិកា HTML ដូចមុន) ... -->
+             <div class="p-6 pt-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white flex flex-col items-center shadow-md">
                 <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Company Logo" class="w-24 h-24 object-contain mb-4 rounded-full border-4 border-white shadow-lg">
                 <h1 class="text-2xl font-bold text-center">ជ្រើសរើសបុគ្គលិក</h1>
             </div>
@@ -108,7 +140,8 @@
 
         <!-- Attendance View -->
         <div id="attendanceView" class="view flex flex-col flex-1" style="display: none;">
-            <div class="p-6 flex justify-between items-center">
+             <!-- ... (មាតិកា HTML ដូចមុន) ... -->
+             <div class="p-6 flex justify-between items-center">
                 <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Logo" class="w-12 h-12 object-contain">
                 
                 <div class="flex items-center space-x-4">
@@ -137,9 +170,11 @@
             <div class="px-6 pb-6">
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg p-5">
                     <div class="flex items-center space-x-4 mb-4">
+                        <!-- សំខាន់៖ ត្រូវតែមាន crossOrigin="anonymous" សម្រាប់ face-api ឱ្យដំណើរការ -->
                         <img id="profileImage" src="https://placehold.co/80x80/e2e8f0/64748b?text=Profile"
                             onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=Error'"
-                            class="w-20 h-20 rounded-full border-4 border-white object-cover shadow-md">
+                            class="w-20 h-20 rounded-full border-4 border-white object-cover shadow-md"
+                            crossOrigin="anonymous">
                         <div>
                             <h2 id="profileName" class="text-2xl font-bold">ឈ្មោះបុគ្គលិក</h2>
                             <p id="profileId" class="text-sm opacity-90">អត្តលេខ: </p>
@@ -214,10 +249,11 @@
         </footer>
     </div>
 
-    <!-- Modal សម្រាប់សួរបញ្ជាក់ -->
+    <!-- Modal សម្រាប់សួរបញ្ជាក់ (ដូចមុន) -->
     <div id="customModal"
         class="modal modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
-        <div
+         <!-- ... (មាតិកា HTML ដូចមុន) ... -->
+         <div
             class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
             <div id="modalHeader" class="p-6">
                 <h3 id="modalTitle" class="text-2xl font-bold text-center text-gray-800"></h3>
@@ -238,7 +274,39 @@
         </div>
     </div>
 
-    <!-- *** បានដក Camera Modal ចេញ *** -->
+    <!-- *** បានបន្ថែម Camera Modal *** -->
+    <div id="cameraModal"
+        class="modal modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-md">
+        <div
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all duration-300">
+            <div class="p-6">
+                <h3 id="cameraModalTitle" class="text-2xl font-bold text-center text-gray-800">ផ្ទៀងផ្ទាត់ផ្ទៃមុខ</h3>
+            </div>
+            
+            <!-- កន្លែងបង្ហាញកាមេរ៉ា -->
+            <div class="p-6 pt-0 relative bg-gray-900">
+                <video id="cameraVideo" autoplay playsinline muted></video>
+                <canvas id="cameraCanvas" class="absolute top-0 left-0 hidden"></canvas>
+                
+                <!-- Overlay សម្រាប់បង្ហាញសារ -->
+                <div id="cameraOverlay" class="hidden">
+                    <div id="cameraLoader" class="loader" style="border-top-color: #fff; border-left-color: #fff;"></div>
+                    <p id="cameraStatus" class="mt-4 text-lg font-semibold"></p>
+                </div>
+            </div>
+            
+            <div class="p-4 bg-gray-50 grid grid-cols-2 gap-3">
+                <button id="cameraCancelButton"
+                    class="w-full bg-gray-200 text-gray-800 font-bold py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors">
+                    បោះបង់
+                </button>
+                <button id="cameraCaptureButton"
+                    class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    ថតរូប
+                </button>
+            </div>
+        </div>
+    </div>
 
 
     <!-- Firebase SDK -->
@@ -271,12 +339,21 @@
         
         let currentConfirmCallback = null; 
 
+        // --- AI Model & Camera Variables ---
+        let areModelsLoaded = false;
+        // *** កែសម្រួល៖ ទាញយកពី Folder ក្នុង Project តាមការស្នើសុំ ***
+        const MODEL_URL = './models';
+        let cameraStream = null;
+        let currentUserFaceDescriptor = null; // Descriptor ពីរូប Profile
+        let faceVerificationCallback = null; // Function (checkIn/checkOut) ត្រូវហៅក្រោយផ្ទៀងផ្ទាត់
+        const FACE_MATCH_THRESHOLD = 0.5; // កម្រិតនៃការតម្រង់ (0.1 = តឹង, 0.6 = ធូរ)
+
         // --- Google Sheet Configuration ---
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const SHEET_NAME = 'DIList';
         const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
         const COL_INDEX = {
-            ID: 0,      // E: អត្តលេខ
+            ID: 0,    // E: អត្តលេខ
             GROUP: 2,   // G: ក្រុម
             NAME: 7,    // L: ឈ្មោះ
             GENDER: 9,  // N: ភេទ
@@ -341,7 +418,18 @@
         const modalCancelButton = document.getElementById('modalCancelButton'); 
         const modalConfirmButton = document.getElementById('modalConfirmButton'); 
         
-        // --- Helper Functions ---
+        // --- Camera Modal DOM Elements ---
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraModalTitle = document.getElementById('cameraModalTitle');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        const cameraOverlay = document.getElementById('cameraOverlay');
+        const cameraLoader = document.getElementById('cameraLoader');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const cameraCancelButton = document.getElementById('cameraCancelButton');
+        const cameraCaptureButton = document.getElementById('cameraCaptureButton');
+        
+        // --- Helper Functions (ដូចមុន) ---
 
         function changeView(viewId) {
             loadingView.style.display = 'none';
@@ -532,7 +620,198 @@
             return isInside;
         }
 
-        // --- Main Functions ---
+        // --- AI & Camera Functions ---
+
+        /**
+         * ទាញយក AI Models
+         */
+        async function loadAIModels() {
+            if (areModelsLoaded) return;
+            
+            console.log('Loading AI Models...');
+            loadingText.textContent = 'កំពុងទាញយក AI Models...';
+            
+            try {
+                // ខ្ញុំប្រើ Model តូចៗ (tiny) ដើម្បីឱ្យលឿន
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                
+                console.log('AI Models loaded successfully.');
+                areModelsLoaded = true;
+            } catch (error) {
+                console.error('Error loading AI Models:', error);
+                showMessage('បញ្ហា AI Model', `មិនអាចទាញយក Model បានទេ៖ ${error.message}`, true);
+            }
+        }
+
+        /**
+         * បើក Camera Modal និងចាប់ផ្ដើម Stream
+         */
+        async function openFaceVerificationModal(title, onVerifiedCallback) {
+            if (!areModelsLoaded) {
+                showMessage('បញ្ហា', 'AI Models មិនទាន់ទាញយករួចរាល់ទេ។ សូមរង់ចាំបន្តិច។', true);
+                return;
+            }
+            
+            faceVerificationCallback = onVerifiedCallback; // រក្សាទុក function ដែលត្រូវហៅ
+            currentUserFaceDescriptor = null; // Reset
+            
+            cameraModalTitle.textContent = title;
+            cameraModal.classList.remove('modal-hidden');
+            cameraModal.classList.add('modal-visible');
+            
+            cameraCaptureButton.disabled = true;
+            cameraOverlay.style.display = 'flex';
+            cameraStatus.textContent = 'កំពុងបើកកាមេរ៉ា...';
+
+            // 1. ចាប់ផ្ដើមបើកកាមេរ៉ា
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' }, // ប្រើកាមេរ៉ាមុខ
+                    audio: false
+                });
+                cameraVideo.srcObject = cameraStream;
+                await cameraVideo.play();
+            } catch (err) {
+                console.error("Error starting camera:", err);
+                showMessage('បញ្ហាកាមេរ៉ា', 'មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាត (Allow)។', true);
+                closeFaceVerificationModal();
+                return;
+            }
+
+            // 2. វិភាគរូប Profile (Reference Image)
+            cameraStatus.textContent = 'កំពុងវិភាគរូប Profile...';
+            try {
+                const referenceImage = document.getElementById('profileImage');
+                // ត្រូវប្រាកដថារូបថតបាន load រួចរាល់
+                if (!referenceImage.complete || referenceImage.naturalHeight === 0) {
+                    // បើករណីរូបថតមិនទាន់ load (ឧ. ពេល login ដំបូង)
+                    console.log('Waiting for reference image to load...');
+                    await new Promise((resolve, reject) => {
+                        referenceImage.onload = resolve;
+                        referenceImage.onerror = (err) => {
+                            console.error('Reference image failed to load:', err);
+                            reject(new Error('រូបថត Profile មិនអាចទាញយកបានទេ។'));
+                        };
+                    });
+                    console.log('Reference image loaded.');
+                }
+                
+                const detection = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions())
+                                             .withFaceLandmarks(true)
+                                             .withFaceDescriptor();
+                
+                if (!detection) {
+                    throw new Error('រកមិនឃើញផ្ទៃមុខក្នុងរូប Profile ទេ។');
+                }
+                
+                currentUserFaceDescriptor = detection.descriptor;
+                console.log('Reference profile face descriptor created.');
+                
+                // 3. ត្រៀមខ្លួនថត
+                cameraOverlay.style.display = 'none';
+                cameraStatus.textContent = '';
+                cameraCaptureButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error getting reference descriptor:', error);
+                showMessage('បញ្ហា Profile', `មិនអាចវិភាគរូប Profile បានទេ៖ ${error.message}`, true);
+                closeFaceVerificationModal();
+            }
+        }
+
+        /**
+         * បិទ Camera Modal និងបញ្ឈប់ Stream
+         */
+        function closeFaceVerificationModal() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            cameraVideo.srcObject = null;
+            cameraModal.classList.add('modal-hidden');
+            cameraModal.classList.remove('modal-visible');
+            
+            cameraOverlay.style.display = 'none';
+            cameraCaptureButton.disabled = false;
+            faceVerificationCallback = null;
+            currentUserFaceDescriptor = null;
+        }
+
+        /**
+         * ដំណើរការពេលចុចប៊ូតុង "ថតរូប"
+         */
+        async function handleCameraCapture() {
+            if (!currentUserFaceDescriptor) {
+                showMessage('បញ្ហា', 'Reference descriptor មិនទាន់រួចរាល់។', true);
+                return;
+            }
+
+            cameraCaptureButton.disabled = true;
+            cameraOverlay.style.display = 'flex';
+            cameraStatus.textContent = 'កំពុងវិភាគ...';
+
+            try {
+                // 1. ថតរូបពី Video
+                cameraCanvas.width = cameraVideo.videoWidth;
+                cameraCanvas.height = cameraVideo.videoHeight;
+                const context = cameraCanvas.getContext('2d');
+                context.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+                
+                // 2. វិភាគរកផ្ទៃមុខក្នុងរូបដែលថត (Live Image)
+                const detection = await faceapi.detectSingleFace(cameraCanvas, new faceapi.TinyFaceDetectorOptions())
+                                             .withFaceLandmarks(true)
+                                             .withFaceDescriptor();
+
+                if (!detection) {
+                    cameraStatus.textContent = 'រកមិនឃើញផ្ទៃមុខ! សូមព្យាយាមម្ដងទៀត។';
+                    setTimeout(() => {
+                        cameraOverlay.style.display = 'none';
+                        cameraCaptureButton.disabled = false;
+                    }, 2000);
+                    return;
+                }
+                
+                // 3. ប្រៀបធៀបផ្ទៃមុខ (Reference vs Live)
+                const liveDescriptor = detection.descriptor;
+                const distance = faceapi.euclideanDistance(currentUserFaceDescriptor, liveDescriptor);
+                
+                console.log(`Face match distance: ${distance}`);
+
+                if (distance <= FACE_MATCH_THRESHOLD) {
+                    // ជោគជ័យ!
+                    cameraStatus.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
+                    console.log('Face verified!');
+                    
+                    setTimeout(() => {
+                        closeFaceVerificationModal();
+                        if (faceVerificationCallback) {
+                            faceVerificationCallback(); // ហៅ function (checkIn/checkOut) បន្ត
+                        }
+                    }, 1500);
+
+                } else {
+                    // បរាជ័យ!
+                    cameraStatus.textContent = 'ផ្ទៃមុខមិនត្រឹមត្រូវ! (Distance: ' + distance.toFixed(2) + ')';
+                    console.warn('Face verification failed.');
+                    setTimeout(() => {
+                        cameraOverlay.style.display = 'none';
+                        cameraCaptureButton.disabled = false;
+                    }, 2500);
+                }
+
+            } catch (error) {
+                console.error('Error during capture/verification:', error);
+                cameraStatus.textContent = 'មានបញ្ហាពេលវិភាគ!';
+                setTimeout(() => {
+                    cameraOverlay.style.display = 'none';
+                    cameraCaptureButton.disabled = false;
+                }, 2000);
+            }
+        }
+
+        // --- Main Functions (កែសម្រួល) ---
 
         async function initializeAppFirebase() {
             try {
@@ -552,6 +831,11 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         console.log('Firebase Auth user signed in:', user.uid);
+                        
+                        // ហៅ AI Model មុនពេលទាញទិន្នន័យ Sheet
+                        // ដើម្បីឱ្យវា load ស្របគ្នា
+                        await loadAIModels(); 
+                        
                         await fetchGoogleSheetData();
                         resolve();
                     } else {
@@ -569,8 +853,22 @@
 
         async function fetchGoogleSheetData() {
             changeView('loadingView'); 
+            
+            // ប្រសិនបើ Model មិនទាន់ load រួច
+            if (!areModelsLoaded) {
+                 loadingText.textContent = 'កំពុងទាញយក AI Models...';
+                 await new Promise(resolve => {
+                    const checkInterval = setInterval(() => {
+                        if (areModelsLoaded) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                 });
+            }
+            
             loadingText.textContent = 'កំពុងទាញបញ្ជីបុគ្គលិក...';
-                
+                 
             try {
                 const response = await fetch(GVIZ_URL);
                 if (!response.ok) {
@@ -600,6 +898,7 @@
                             id: String(id).trim(),
                             name: cells[COL_INDEX.NAME]?.v || 'N/A',
                             department: cells[COL_INDEX.DEPT]?.v || 'N/A',
+                            // *** FIX 8: ដក Proxy "images.weserv.nl" ចេញ ហើយប្រើ Link ដើម ***
                             photoUrl: cells[COL_INDEX.PHOTO]?.v || null,
                             group: cells[COL_INDEX.GROUP]?.v || 'N/A',
                             gender: cells[COL_INDEX.GENDER]?.v || 'N/A',
@@ -614,9 +913,16 @@
                         };
                     })
                     .filter(emp => emp !== null)
-                    .filter(emp => emp.group === 'IT Support');
+                    .filter(emp => emp.group === 'IT Support' && emp.photoUrl); // *** បន្ថែមលក្ខខណ្ឌ៖ ត្រូវតែមានរូបថត ***
 
-                console.log(`Loaded ${allEmployees.length} employees (Filtered).`);
+                console.log(`Loaded ${allEmployees.length} employees (Filtered + Must have photo).`);
+                
+                if (allEmployees.length === 0) {
+                     showMessage('បញ្ហា', 'រកមិនឃើញបុគ្គលិក (IT Support) ដែលមានរូបថតទេ។ សូមទាក់ទង IT។', true);
+                     loadingText.textContent = 'Error';
+                     return;
+                }
+                
                 renderEmployeeList(allEmployees); 
                 
                 const savedEmployeeId = localStorage.getItem('savedEmployeeId');
@@ -656,7 +962,8 @@
                     <img src="${emp.photoUrl || 'https://placehold.co/48x48/e2e8f0/64748b?text=No+Img'}" 
                          alt="រូបថត" 
                          class="w-12 h-12 rounded-full object-cover border-2 border-gray-100 mr-3"
-                         onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'">
+                         onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'"
+                         crossOrigin="anonymous"> <!-- សំខាន់សម្រាប់ AI -->
                     <div>
                         <h3 class="text-md font-semibold text-gray-800">${emp.name}</h3>
                         <p class="text-sm text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
@@ -688,7 +995,11 @@
 
             // បំពេញព័ត៌មាន Profile
             welcomeMessage.textContent = `សូមស្វាគមន៍`; 
+            
+            // សំខាន់៖ ត្រូវប្រាកដថា src ត្រូវបាន update មុនពេល AI ព្យាយាមអាន
+            profileImage.src = ''; // បង្ខំឱ្យ browser load ឡើងវិញ
             profileImage.src = employee.photoUrl || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Img';
+            
             profileName.textContent = employee.name;
             profileId.textContent = `អត្តលេខ: ${employee.id}`;
             profileGender.textContent = `ភេទ: ${employee.gender}`;
@@ -787,14 +1098,23 @@
             const todayString = getTodayDateString();
             const todayData = globalAttendanceList.find(record => record.date === todayString);
             
+            // ពិនិត្យ Model មុនពេល enable ប៊ូតុង
+            const canUseButtons = areModelsLoaded;
+            
             const canCheckIn = checkShiftTime(currentUserShift, 'checkIn');
             const canCheckOut = checkShiftTime(currentUserShift, 'checkOut');
 
             // Reset
-            checkInButton.disabled = false;
+            checkInButton.disabled = !canUseButtons; // Disable បើ Model មិនទាន់ load
             checkOutButton.disabled = true;
             attendanceStatus.textContent = 'សូមធ្វើការ Check-in';
             attendanceStatus.className = 'text-center text-sm text-blue-700 pb-4 px-6 h-5'; 
+
+            if (!canUseButtons) {
+                attendanceStatus.textContent = 'កំពុងរង់ចាំ AI Models...';
+                attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5 animate-pulse';
+                return; // ចេញពី function នេះ
+            }
 
             if (!canCheckIn && !todayData) {
                  attendanceStatus.textContent = `ក្រៅម៉ោង Check-in (${currentUserShift})`;
@@ -822,7 +1142,7 @@
         }
 
         /**
-         * 10. ដំណើរការ Check In
+         * 10. ដំណើរការ Check In (Flow ថ្មី)
          */
         async function handleCheckIn() {
             if (!attendanceCollectionRef || !currentUser) return;
@@ -833,7 +1153,41 @@
                 return;
             }
 
-            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
+            // --- 2. ពិនិត្យផ្ទៃមុខ (Face Verification) ---
+            openFaceVerificationModal('ផ្ទៀងផ្ទាត់ Check-in', () => {
+                // ជំហានបន្ទាប់ (Callback) ពេលផ្ទៀងផ្ទាត់រួច
+                performLocationCheckAndSave('checkIn');
+            });
+        }
+
+        /**
+         * 11. ដំណើរការ Check Out (Flow ថ្មី)
+         */
+        async function handleCheckOut() {
+            if (!attendanceCollectionRef) return;
+
+            // --- 1. ពិនិត្យវេន (Shift Check) ---
+            if (!checkShiftTime(currentUserShift, 'checkOut')) {
+                showMessage('បញ្ហា', `ក្រៅម៉ោង Check-out សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+                return;
+            }
+
+            // --- 2. ពិនិត្យផ្ទៃមុខ (Face Verification) ---
+            openFaceVerificationModal('ផ្ទៀងផ្ទាត់ Check-out', () => {
+                // ជំហានបន្ទាប់ (Callback) ពេលផ្ទៀងផ្ទាត់រួច
+                performLocationCheckAndSave('checkOut');
+            });
+        }
+        
+        /**
+         * 12. ដំណើរការពិនិត្យទីតាំង និងរក្សាទុក (បំបែកចេញ)
+         * នេះគឺជា Logic ចាស់ ដែលឥឡូវត្រូវហៅ *បន្ទាប់ពី* ផ្ទៀងផ្ទាត់ផ្ទៃមុខ
+         */
+        async function performLocationCheckAndSave(checkType) {
+            
+            const isCheckIn = (checkType === 'checkIn');
+            
+            // --- ពិនិត្យទីតាំង (Location Check) ---
             checkInButton.disabled = true;
             checkOutButton.disabled = true;
             attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
@@ -863,106 +1217,53 @@
                 return; 
             }
             
-            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
-            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
+            // --- ដំណើរការរក្សាទុក (Save to Firebase) ---
+            attendanceStatus.textContent = `កំពុងដំណើរការ ${checkType}...`;
 
             const now = new Date();
             const todayDocId = getTodayDateString(now);
+            const todayDocRef = doc(attendanceCollectionRef, todayDocId);
             
-            const data = {
-                employeeId: currentUser.id,
-                employeeName: currentUser.name,
-                department: currentUser.department,
-                group: currentUser.group,
-                grade: currentUser.grade,
-                gender: currentUser.gender,
-                shift: currentUserShift, 
-                date: todayDocId, 
-                checkInTimestamp: now.toISOString(), 
-                checkOutTimestamp: null,
-                formattedDate: formatDate(now),
-                checkIn: formatTime(now),
-                checkOut: null,
-                checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
-            };
-
             try {
-                const todayDocRef = doc(attendanceCollectionRef, todayDocId);
-                await setDoc(todayDocRef, data); 
-            } catch (error) {
-                console.error("Check In Error:", error);
-                showMessage('បញ្ហា', `មិនអាច Check-in បានទេ: ${error.message}`, true);
-                updateButtonState(); 
-            } finally {
-                attendanceStatus.classList.remove('animate-pulse');
-            }
-        }
-
-        /**
-         * 11. ដំណើរការ Check Out
-         */
-        async function handleCheckOut() {
-            if (!attendanceCollectionRef) return;
-
-            // --- 1. ពិនិត្យវេន (Shift Check) ---
-            if (!checkShiftTime(currentUserShift, 'checkOut')) {
-                showMessage('បញ្ហា', `ក្រៅម៉ោង Check-out សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
-                return;
-            }
-
-            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
-            checkInButton.disabled = true;
-            checkOutButton.disabled = true;
-            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
-            attendanceStatus.classList.add('animate-pulse');
-
-            let userCoords;
-            try {
-                userCoords = await getUserLocation();
-                console.log('User location:', userCoords.latitude, userCoords.longitude);
-
-                if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
-                    showMessage('បញ្ហាទីតាំង', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។', true);
-                    updateButtonState(); 
-                    attendanceStatus.classList.remove('animate-pulse');
-                    attendanceStatus.textContent = 'បរាជ័យ (ក្រៅទីតាំង)';
-                    attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
-                    return; 
+                if (isCheckIn) {
+                    const data = {
+                        employeeId: currentUser.id,
+                        employeeName: currentUser.name,
+                        department: currentUser.department,
+                        group: currentUser.group,
+                        grade: currentUser.grade,
+                        gender: currentUser.gender,
+                        shift: currentUserShift, 
+                        date: todayDocId, 
+                        checkInTimestamp: now.toISOString(), 
+                        checkOutTimestamp: null,
+                        formattedDate: formatDate(now),
+                        checkIn: formatTime(now),
+                        checkOut: null,
+                        checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
+                    };
+                    await setDoc(todayDocRef, data); 
+                    
+                } else { // Check Out
+                    const data = {
+                        checkOutTimestamp: now.toISOString(),
+                        checkOut: formatTime(now),
+                        checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
+                    };
+                    await updateDoc(todayDocRef, data); 
                 }
                 
-                 console.log('User is INSIDE the area.');
-
+                console.log(`${checkType} successful.`);
+                
             } catch (error) {
-                console.error("Location Error:", error.message);
-                showMessage('បញ្ហាទីតាំង', error.message, true);
-                updateButtonState(); 
-                attendanceStatus.classList.remove('animate-pulse');
-                return; 
-            }
-
-            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
-            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
-            
-            const now = new Date();
-            const todayDocId = getTodayDateString(now);
-            
-            const data = {
-                checkOutTimestamp: now.toISOString(),
-                checkOut: formatTime(now),
-                checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
-            };
-
-            try {
-                const todayDocRef = doc(attendanceCollectionRef, todayDocId);
-                await updateDoc(todayDocRef, data); 
-            } catch (error) {
-                console.error("Check Out Error:", error);
-                showMessage('បញ្ហា', `មិនអាច Check-out បានទេ: ${error.message}`, true);
+                console.error(`Error during ${checkType}:`, error);
+                showMessage('បញ្ហា', `មិនអាច ${checkType} បានទេ: ${error.message}`, true);
                 updateButtonState(); 
             } finally {
                 attendanceStatus.classList.remove('animate-pulse');
             }
         }
+
 
         // --- Event Listeners ---
         
@@ -1013,12 +1314,14 @@
             }
         });
         
-        // --- បានដក Camera Listeners ចេញ ---
+        // --- Camera Listeners ---
+        cameraCancelButton.addEventListener('click', closeFaceVerificationModal);
+        cameraCaptureButton.addEventListener('click', handleCameraCapture);
 
         // --- Initial Call ---
         document.addEventListener('DOMContentLoaded', () => {
             initializeAppFirebase();
-            // *** បានដក loadAIModels() ចេញ ***
+            // ការហៅ loadAIModels() ត្រូវបានផ្លាស់ទីទៅក្នុង setupAuthListener()
         });
 
     </script>
