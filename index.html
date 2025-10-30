@@ -10,7 +10,7 @@
     
     <!-- *** បានបន្ថែម AI Face Detection Library (face-api.js) *** -->
     <!-- នេះគឺជាបណ្ណាល័យស្នូលសម្រាប់ការវិភាគផ្ទៃមុខ -->
-    <!-- *** FIX 7: កែ xintegrity ទៅ integrity (កែពិតប្រាកដ) *** -->
+    <!-- *** FIX 9 (កែសម្រួលចុងក្រោយ): កែ xintegrity ទៅ integrity *** -->
     <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js" 
             xintegrity="sha512-E2A6SMozdFR+/N/1L5JKnUFGnJ2lqbrXMPOhCvCUPxL2zKiSAgyE83JSOV1UeNW6/mZ2R/Q2bV2hYCC9BY12Tg==" 
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -620,6 +620,32 @@
             return isInside;
         }
 
+        /**
+         * 4.5. ស្នើសុំសិទ្ធិទីតាំង (Prime Location Permission)
+         * ហៅ function នេះម្តងនៅពេល login ដើម្បីឱ្យ browser សួរ permission
+         * មុនពេល camera modal បើកបាំង
+         */
+        function primeLocationPermission() {
+            console.log('Priming location permission...');
+            if (!navigator.geolocation) {
+                console.warn('Geolocation not supported, cannot prime.');
+                return;
+            }
+            // គ្រាន់តែហៅវា មិនបាច់ធ្វើអ្វីជាមួយ data ទេ
+            // គោលបំណងគឺដើម្បីឱ្យ browser បង្ហាញ pop-up សុំសិទ្ធិ
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('Location permission already granted or successfully primed.');
+                },
+                (error) => {
+                    // មិនបាច់បង្ហាញ Error ខ្លាំងពេកទេ ព្រោះ getUserLocation() ពេលក្រោយ
+                    // នឹង handle error នេះម្តងទៀត
+                    console.warn(`Priming location failed: ${error.message}`);
+                },
+                { timeout: 5000 } // ឱ្យវារត់ 5 វិនាទីបានហើយ
+            );
+        }
+
         // --- AI & Camera Functions ---
 
         /**
@@ -1011,6 +1037,9 @@
             changeView('attendanceView');
             setupAttendanceListener();
 
+            // *** FIX 10: ហៅ Function ស្នើសុំទីតាំង (Prime Location) ពេល Login ***
+            primeLocationPermission();
+
             employeeListContainer.classList.add('hidden');
             searchInput.value = '';
         }
@@ -1327,6 +1356,4 @@
     </script>
 </body>
 </html>
-
-
 
