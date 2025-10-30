@@ -2,13 +2,15 @@
 <html lang="km">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-R">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធវត្តមានបុគ្គលិក</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
     
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -170,6 +172,29 @@
             </div>
         </div>
     </div>
+
+    <div id="cameraModal"
+        class="modal modal-hidden fixed inset-0 z-[60] flex flex-col items-center justify-center p-0 bg-gray-900 bg-opacity-90 backdrop-blur-sm">
+        
+        <div class="absolute top-4 right-4">
+            <button id="cameraCloseButton" class="text-white bg-red-500 rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+                &times;
+            </button>
+        </div>
+
+        <div class="relative w-full max-w-md h-[400px] bg-gray-800 rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700">
+            <video id="videoElement" autoplay muted playsinline class="w-full h-full object-cover"></video>
+            <canvas id="cameraCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+        </div>
+        
+        <div id="cameraLoadingContainer" class="text-center p-4 min-h-[60px]">
+             <p id="cameraLoadingText" class="text-white text-lg font-semibold">
+                កំពុងបើកកាមេរ៉ា...
+             </p>
+             <p class="text-gray-300 text-sm">សូមដាក់មុខរបស់អ្នកឱ្យចំកាមេរ៉ា</p>
+        </div>
+    </div>
+
 
     <script type="module" src="script.js"></script>
 
