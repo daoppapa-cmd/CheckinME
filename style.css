@@ -57,3 +57,18 @@ body {
         transform: translateY(0);
     }
 }
+
+/* *** ใหม่: สไตล์สำหรับ Camera Modal *** */
+#videoElement {
+    /* ทำให้กล้องหน้าไม่กลับด้าน (un-mirrored) */
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+    -moz-transform: scaleX(-1);
+}
+
+#cameraCanvas {
+    /* ทำให้ Canvas กลับด้านเพื่อให้วาดได้ตรงกับ Video */
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+    -moz-transform: scaleX(-1);
+}
