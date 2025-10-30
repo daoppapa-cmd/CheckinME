@@ -67,6 +67,14 @@
                 transform: translateY(0);
             }
         }
+        
+        /* Video Stream (Camera) */
+        #cameraStream {
+            transform: scaleX(-1); /* Mirror effect សម្រាប់កាមេរ៉ាមុខ */
+        }
+        #photoCanvas {
+            display: none; /* លាក់ Canvas */
+        }
     </style>
 </head>
 
@@ -74,11 +82,12 @@
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-0 md:p-4">
 
     <!-- កែសម្រួល៖ កំណត់ h-screen សម្រាប់ Mobile, flex flex-col -->
-    <div class="max-w-md w-full h-screen md:h-auto md:min-h-[700px] md:max-h-[90vh] bg-white md:rounded-2xl shadow-xl overflow-hidden flex flex-col">
+    <div class="max-w-md w-full h-screen md:h-auto md:min-h-[700px] md:max-h-[90vh] bg-white md:rounded-2xl shadow-xl overflow-hidden flex flex-col relative">
 
         <!-- Main Loading View -->
         <!-- កែសម្រួល៖ បន្ថែម flex-1 -->
         <div id="loadingView" class="view p-8 flex flex-col items-center justify-center min-h-[400px] flex-1">
+            <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Company Logo" class="w-32 h-32 object-contain mb-6">
             <div class="loader"></div>
             <p class="mt-4 text-gray-600 text-lg">កំពុងទាញទិន្នន័យបុគ្គលិក...</p>
             <p class="text-sm text-gray-500">សូមរង់ចាំបន្តិច</p>
@@ -87,18 +96,24 @@
         <!-- Employee List View -->
         <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 -->
         <div id="employeeListView" class="view flex flex-col flex-1" style="display: none;">
-            <div class="p-6 bg-gradient-to-r from-blue-600 to-blue-500 text-white">
+            <!-- *** កែសម្រួល៖ រចនា Header ថ្មី *** -->
+            <div class="p-6 pt-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white flex flex-col items-center shadow-md">
+                <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Company Logo" class="w-24 h-24 object-contain mb-4 rounded-full border-4 border-white shadow-lg">
                 <h1 class="text-2xl font-bold text-center">ជ្រើសរើសបុគ្គលិក</h1>
             </div>
             
-            <div class="p-4 relative">
+            <!-- *** កែសម្រួល៖ រចនា អត្ថបទណែនាំ *** -->
+            <p class="text-center text-gray-700 text-md p-5 font-semibold">សូមអ្នកជ្រើសរើសគណនីដើម្បីស្កេនវត្តមាន</p>
+            
+            <div class="p-4 pt-0 relative"> 
                 <input type="text" id="searchInput"
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="វាយឈ្មោះ ឬអត្តលេខ..."
                     autocomplete="off">
                 
+                <!-- *** កែសម្រួល៖ កំណត់ max-h-80 (បង្ហាញប្រហែល 3-4 items) *** -->
                 <div id="employeeListContainer" 
-                     class="absolute z-10 w-full left-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-y-auto p-2 space-y-1 hidden">
+                     class="absolute z-10 w-full left-0 top-full mt-2 bg-gray-100 border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-y-auto p-2 hidden">
                     <!-- Employee cards (តូចៗ) will be injected here -->
                 </div>
             </div>
@@ -109,25 +124,39 @@
         <!-- Attendance View -->
         <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 -->
         <div id="attendanceView" class="view flex flex-col flex-1" style="display: none;">
-            <!-- Header -->
+            <!-- *** កែសម្រួល៖ Header ថ្មី (បន្ថែម Logo) *** -->
             <div class="p-6 flex justify-between items-center">
-                <h1 id="welcomeMessage" class="text-2xl font-bold text-gray-800">សូមស្វាគមន៍</h1>
-                <button id="logoutButton"
-                    class="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    ចាកចេញ
-                </button>
+                <!-- Logo តូច -->
+                <img src="https://i.postimg.cc/FHBn0Fdf/di3-copy.png" alt="Logo" class="w-12 h-12 object-contain">
+                
+                <div class="flex items-center space-x-4">
+                    <button id="logoutButton"
+                        class="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        ចាកចេញ
+                    </button>
+                    <!-- ប៊ូតុងបិទកម្មវិធី -->
+                    <button id="exitAppButton"
+                        class="flex items-center text-sm text-red-600 hover:text-red-800 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        បិទ
+                    </button>
+                </div>
             </div>
+            
+            <!-- Welcome Message -->
+            <h1 id="welcomeMessage" class="text-2xl font-bold text-gray-800 px-6 pb-4">សូមស្វាគមន៍</h1>
 
             <!-- Profile Card -->
             <div class="px-6 pb-6">
-                <!-- កែសម្រួល៖ ដក 'space-x-4' និង 'flex' ចេញ -->
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg p-5">
-                    <div class="flex items-center space-x-4 mb-4"> <!-- ដាក់រូប និង ឈ្មោះ ក្នុង flex នេះ -->
+                    <div class="flex items-center space-x-4 mb-4">
                         <img id="profileImage" src="https://placehold.co/80x80/e2e8f0/64748b?text=Profile"
                             onerror="this.src='https://placehold.co/80x80/e2e8f0/64748b?text=Error'"
                             class="w-20 h-20 rounded-full border-4 border-white object-cover shadow-md">
@@ -137,7 +166,7 @@
                             <p id="profileGender" class="text-sm opacity-90">ភេទ: </p>
                         </div>
                     </div>
-                    <!-- ព័ត៌មានបន្ថែម (UI ថ្មី) -->
+                    <!-- ព័ត៌មានបន្ថែម -->
                     <div class="space-y-1 text-sm opacity-90">
                         <p id="profileDepartment" class="font-medium">ផ្នែក: </p>
                         <p id="profileGroup" class="font-medium">ក្រុម: </p>
@@ -169,17 +198,15 @@
             </div>
 
             <!-- Status Message -->
-            <p id="attendanceStatus" class="text-center text-sm text-gray-500 pb-4 px-6 h-5"></p> <!-- h-5 សម្រាប់រក្សាកម្ពស់ -->
+            <p id="attendanceStatus" class="text-center text-sm text-gray-500 pb-4 px-6 h-5"></p>
 
             <!-- History Section -->
-            <!-- កែសម្រួល៖ បន្ថែម flex flex-col flex-1 overflow-hidden -->
             <div class="px-6 pb-6 flex flex-col flex-1 overflow-hidden">
                 <h3 class="text-lg font-bold text-gray-800 mb-3">ប្រវត្តិវត្តមានថ្ងៃនេះ</h3>
                 
-                <!-- កែសម្រួល៖ បន្ថែម overflow-y-auto flex-1 -->
                 <div class="shadow-sm border border-gray-200 rounded-lg overflow-y-auto flex-1">
                     <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50 sticky top-0"> <!-- បន្ថែម sticky top-0 -->
+                        <thead class="bg-gray-50 sticky top-0">
                             <tr>
                                 <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                                     កាលបរិច្ឆេទ
@@ -193,7 +220,6 @@
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
-                            <!-- Rows will be injected here -->
                             <tr id="noHistoryRow">
                                 <td colspan="3" class="px-4 py-4 text-center text-gray-500">
                                     មិនទាន់មានទិន្នន័យថ្ងៃនេះ
@@ -204,9 +230,14 @@
                 </div>
             </div>
         </div>
+        
+        <!-- *** ថ្មី៖ Footer (នៅគ្រប់ទំព័រ) *** -->
+        <footer class="bg-gray-800 text-white text-center p-3 text-xs shadow-inner">
+            @អភិវឌ្ឍន៍កម្មវិធី IT SUPPORT
+        </footer>
     </div>
 
-    <!-- Custom Modal (UI ដើម V1) -->
+    <!-- Modal សម្រាប់សួរបញ្ជាក់ -->
     <div id="customModal"
         class="modal modal-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
         <div
@@ -217,14 +248,35 @@
             <div class="p-6 pt-0">
                 <p id="modalMessage" class="text-center text-gray-600"></p>
             </div>
-            <div class="p-4 bg-gray-50">
-                <button id="modalCloseButton"
+            <div id="modalActions" class="p-4 bg-gray-50 grid grid-cols-2 gap-3">
+                <button id="modalCancelButton"
+                    class="w-full bg-gray-200 text-gray-800 font-bold py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">
+                    បោះបង់
+                </button>
+                <button id="modalConfirmButton"
                     class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                     យល់ព្រម
                 </button>
             </div>
         </div>
     </div>
+
+    <!-- Modal សម្រាប់កាមេរ៉ា -->
+    <div id="cameraModal" class="modal modal-hidden fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black">
+        <video id="cameraStream" class="w-full h-full object-cover" playsinline autoplay muted></video>
+        <canvas id="photoCanvas" class="hidden"></canvas>
+        
+        <button id="takePictureButton" class="absolute bottom-10 z-10 w-20 h-20 rounded-full bg-white border-4 border-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 flex items-center justify-center">
+            <div class="w-16 h-16 rounded-full bg-white transition-all transform group-hover:scale-110"></div>
+        </button>
+        
+        <button id="cancelCameraButton" class="absolute top-6 right-6 z-10 text-white bg-black bg-opacity-30 rounded-full p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -246,13 +298,19 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Global Variables ---
-        let db, auth;
-        let allEmployees = []; // ផ្ទុកបុគ្គលិកទាំងអស់ពី Google Sheet
-        let globalAttendanceList = []; // ផ្ទុកប្រវត្តិវត្តមានទាំងអស់
-        let currentUser = null; // បុគ្គលិកដែលបានជ្រើសរើស
-        let currentUserShift = null; // វេនធ្វើការសម្រាប់ថ្ងៃនេះ
-        let attendanceCollectionRef = null; // Reference ទៅ Firestore collection
-        let attendanceListener = null; // Unsubscribe function សម្រាប់ onSnapshot
+        let db, auth; 
+        let allEmployees = []; 
+        let globalAttendanceList = []; 
+        let currentUser = null; 
+        let currentUserShift = null; 
+        let attendanceCollectionRef = null; 
+        let attendanceListener = null; 
+        
+        let currentConfirmCallback = null; 
+
+        let cameraStream = null;
+        let currentCameraResolve = null;
+        let currentCameraReject = null;
 
         // --- Google Sheet Configuration ---
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
@@ -286,7 +344,7 @@
             measurementId: "G-QCJ2JH4WH6"
         };
 
-        // --- *** ថ្មី៖ តំបន់ទីតាំង (Polygon Geofence) *** ---
+        // --- តំបន់ទីតាំង (Polygon Geofence) ---
         const allowedAreaCoords = [
             [11.415206789703271, 104.7642005060435],
             [11.41524294053174, 104.76409925265823],
@@ -302,6 +360,7 @@
         const employeeListContainer = document.getElementById('employeeListContainer');
         const welcomeMessage = document.getElementById('welcomeMessage');
         const logoutButton = document.getElementById('logoutButton');
+        const exitAppButton = document.getElementById('exitAppButton');
         const profileImage = document.getElementById('profileImage');
         const profileName = document.getElementById('profileName');
         const profileId = document.getElementById('profileId');
@@ -318,7 +377,16 @@
         const customModal = document.getElementById('customModal');
         const modalTitle = document.getElementById('modalTitle');
         const modalMessage = document.getElementById('modalMessage');
-        const modalCloseButton = document.getElementById('modalCloseButton');
+        const modalActions = document.getElementById('modalActions'); 
+        const modalCancelButton = document.getElementById('modalCancelButton'); 
+        const modalConfirmButton = document.getElementById('modalConfirmButton'); 
+        
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraStreamEl = document.getElementById('cameraStream');
+        const photoCanvas = document.getElementById('photoCanvas');
+        const takePictureButton = document.getElementById('takePictureButton');
+        const cancelCameraButton = document.getElementById('cancelCameraButton');
+
 
         // --- Helper Functions ---
 
@@ -340,13 +408,39 @@
         }
 
         /**
-         * បង្ហាញ Modal សារ
+         * បង្ហាញ Modal សារ (សម្រាប់ Error/Info)
          */
         function showMessage(title, message, isError = false) {
             modalTitle.textContent = title;
             modalMessage.textContent = message;
             modalTitle.classList.toggle('text-red-600', isError);
             modalTitle.classList.toggle('text-gray-800', !isError);
+            
+            modalConfirmButton.textContent = 'យល់ព្រម';
+            modalConfirmButton.className = "w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 col-span-2"; 
+            modalCancelButton.style.display = 'none'; 
+            
+            currentConfirmCallback = null; 
+
+            customModal.classList.remove('modal-hidden');
+            customModal.classList.add('modal-visible');
+        }
+        
+        /**
+         * បង្ហាញ Modal សួរបញ្ជាក់
+         */
+        function showConfirmation(title, message, confirmText, onConfirm) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalTitle.classList.remove('text-red-600');
+            modalTitle.classList.add('text-gray-800');
+
+            modalConfirmButton.textContent = confirmText;
+            modalConfirmButton.className = "w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"; 
+            modalCancelButton.style.display = 'block'; 
+            
+            currentConfirmCallback = onConfirm; 
+
             customModal.classList.remove('modal-hidden');
             customModal.classList.add('modal-visible');
         }
@@ -357,6 +451,7 @@
         function hideMessage() {
             customModal.classList.add('modal-hidden');
             customModal.classList.remove('modal-visible');
+            currentConfirmCallback = null; 
         }
 
         /**
@@ -402,11 +497,11 @@
         function checkShiftTime(shiftType, checkType) {
             if (!shiftType || shiftType === 'N/A') {
                 console.warn(`វេនមិនបានកំណត់ (N/A)។ មិនអនុញ្ញាតឱ្យស្កេន។`);
-                return false; // វេនមិនបានកំណត់
+                return false; 
             }
 
             if (shiftType === 'Uptime') {
-                return true; // វេន Uptime អាចស្កេនពេលណាក៏បាន
+                return true; 
             }
 
             const now = new Date();
@@ -437,21 +532,20 @@
             
             if (!rules) {
                 console.warn(`វេនមិនស្គាល់: "${shiftType}". មិនអនុញ្ញាតឱ្យស្កេន។`);
-                return false; // វេនមិនត្រឹមត្រូវ
+                return false; 
             }
 
             const [min, max] = rules[checkType];
             if (currentTime >= min && currentTime <= max) {
-                return true; // ក្នុងម៉ោង
+                return true; 
             }
 
             console.log(`ក្រៅម៉ោង: ម៉ោងបច្ចុប្បន្ន (${currentTime}) មិនស្ថិតក្នុងចន្លោះ [${min}, ${max}] សម្រាប់វេន "${shiftType}"`);
-            return false; // ក្រៅម៉ោង
+            return false; 
         }
 
         /**
-         * *** ថ្មី៖ យកទីតាំងបច្ចុប្បន្ន (Geolocation) ***
-         * @returns {Promise<Coordinates>}
+         * យកទីតាំងបច្ចុប្បន្ន (Geolocation)
          */
         function getUserLocation() {
             return new Promise((resolve, reject) => {
@@ -462,8 +556,8 @@
 
                 const options = {
                     enableHighAccuracy: true,
-                    timeout: 10000, // 10 វិនាទី
-                    maximumAge: 0 // បង្ខំឱ្យយកទីតាំងថ្មី
+                    timeout: 10000, 
+                    maximumAge: 0 
                 };
 
                 navigator.geolocation.getCurrentPosition(
@@ -473,7 +567,6 @@
                     (error) => {
                         switch (error.code) {
                             case error.PERMISSION_DENIED:
-                                // *** កែសម្រួល៖ បន្ថែមសារណែនាំ ***
                                 reject(new Error('សូមអនុញ្ញាតឱ្យប្រើប្រាស់ទីតាំង។ ប្រសិនបើអ្នកបាន Block, សូមចូលទៅកាន់ Site Settings របស់ Browser ដើម្បី Allow។'));
                                 break;
                             case error.POSITION_UNAVAILABLE:
@@ -492,34 +585,70 @@
         }
 
         /**
-         * *** ថ្មី៖ ពិនិត្យមើលថាតើចំណុចមួយស្ថិតនៅក្នុងពហុកោណ (Polygon) ដែរឬទេ ***
-         * (Ray Casting Algorithm)
-         * @param {number} lat - User's Latitude
-         * @param {number} lon - User's Longitude
-         * @returns {boolean}
+         * ពិនិត្យមើលថាតើចំណុចមួយស្ថិតនៅក្នុងពហុកោណ (Polygon) ដែរឬទេ
          */
         function isInsideArea(lat, lon) {
             const polygon = allowedAreaCoords;
             let isInside = false;
-            const x = lon; // User's X (Longitude)
-            const y = lat; // User's Y (Latitude)
+            const x = lon; 
+            const y = lat; 
 
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                const viy = polygon[i][0]; // Vertex i's Y (lat)
-                const vix = polygon[i][1]; // Vertex i's X (lon)
-                const vjy = polygon[j][0]; // Vertex j's Y (lat)
-                const vjx = polygon[j][1]; // Vertex j's X (lon)
+                const viy = polygon[i][0]; 
+                const vix = polygon[i][1]; 
+                const vjy = polygon[j][0]; 
+                const vjx = polygon[j][1]; 
 
-                // ពិនិត្យប្រសិនបើ ray ផ្ដេក កាត់គែម (edge)
                 const intersect = ((viy > y) !== (vjy > y)) &&
                     (x < (vjx - vix) * (y - viy) / (vjy - viy) + vix);
                 
                 if (intersect) {
-                    isInside = !isInside; // ប្តូរ (Flip) លទ្ធផល
+                    isInside = !isInside; 
                 }
             }
             return isInside;
         }
+
+        /**
+         * បិទកាមេរ៉ា Stream
+         */
+        function stopCameraStream() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraStreamEl.srcObject = null;
+            }
+        }
+
+        /**
+         * បើកកាមេរ៉ា និងថតរូប
+         */
+        function captureFace() {
+            return new Promise(async (resolve, reject) => {
+                currentCameraResolve = resolve;
+                currentCameraReject = reject;
+
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user' },
+                        audio: false
+                    });
+                    
+                    cameraStreamEl.srcObject = cameraStream;
+                    cameraStreamEl.play(); 
+
+                    cameraModal.classList.remove('modal-hidden');
+                    cameraModal.classList.add('modal-visible');
+
+                } catch (err) {
+                    console.error("Camera Error:", err);
+                    reject(new Error("មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាតឱ្យប្រើប្រាស់កាមេរ៉ា។"));
+                    cameraModal.classList.add('modal-hidden');
+                    cameraModal.classList.remove('modal-visible');
+                }
+            });
+        }
+
 
         // --- Main Functions ---
 
@@ -609,11 +738,26 @@
                             shiftSun: cells[COL_INDEX.SHIFT_SUN]?.v || null,
                         };
                     })
-                    .filter(emp => emp !== null);
+                    .filter(emp => emp !== null)
+                    .filter(emp => emp.group === 'IT Support');
 
-                console.log(`Loaded ${allEmployees.length} employees.`);
-                renderEmployeeList(allEmployees);
-                changeView('employeeListView');
+                console.log(`Loaded ${allEmployees.length} employees (Filtered).`);
+                renderEmployeeList(allEmployees); 
+                
+                const savedEmployeeId = localStorage.getItem('savedEmployeeId');
+                if (savedEmployeeId) {
+                    const savedEmployee = allEmployees.find(emp => emp.id === savedEmployeeId);
+                    if (savedEmployee) {
+                        console.log('Logging in with saved user:', savedEmployee.name);
+                        selectUser(savedEmployee); 
+                    } else {
+                        console.log('Saved user ID not found in list. Clearing storage.');
+                        localStorage.removeItem('savedEmployeeId');
+                        changeView('employeeListView'); 
+                    }
+                } else {
+                    changeView('employeeListView'); 
+                }
                 
             } catch (error) {
                 console.error('Fetch Google Sheet Error:', error);
@@ -629,13 +773,14 @@
             employeeListContainer.classList.remove('hidden');
 
             if (employees.length === 0) {
-                employeeListContainer.innerHTML = `<p class="text-center text-gray-500 p-3">រកមិនឃើញបុគ្គលិកទេ។</p>`;
+                employeeListContainer.innerHTML = `<p class="text-center text-gray-500 p-3">រកមិនឃើញបុគ្គលិក (IT Support) ទេ។</p>`;
                 return;
             }
 
             employees.forEach(emp => {
                 const card = document.createElement('div');
-                card.className = "flex items-center p-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-all";
+                // *** កែសម្រួល៖ រចនា Item ឱ្យស្អាត ***
+                card.className = "flex items-center p-3 rounded-xl cursor-pointer hover:bg-blue-50 transition-all shadow-md mb-2 bg-white";
                 card.innerHTML = `
                     <img src="${emp.photoUrl || 'https://placehold.co/48x48/e2e8f0/64748b?text=No+Img'}" 
                          alt="រូបថត" 
@@ -643,7 +788,7 @@
                          onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'">
                     <div>
                         <h3 class="text-md font-semibold text-gray-800">${emp.name}</h3>
-                        <p class="text-xs text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
+                        <p class="text-sm text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
                     </div>
                 `;
                 card.onmousedown = () => selectUser(emp);
@@ -658,12 +803,14 @@
             console.log('User selected:', employee);
             currentUser = employee;
             
+            localStorage.setItem('savedEmployeeId', employee.id);
+
             const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
             const dayToShiftKey = [
                 'shiftSun', 'shiftMon', 'shiftTue', 'shiftWed', 'shiftThu', 'shiftFri', 'shiftSat'
             ];
             const shiftKey = dayToShiftKey[dayOfWeek];
-            currentUserShift = currentUser[shiftKey] || 'N/A'; // រក្សាទុកវេនថ្ងៃនេះ
+            currentUserShift = currentUser[shiftKey] || 'N/A'; 
             console.log(`ថ្ងៃនេះ (Day ${dayOfWeek}), វេនគឺ: ${currentUserShift}`);
 
             const firestoreUserId = currentUser.id; 
@@ -696,6 +843,8 @@
             currentUser = null;
             currentUserShift = null; 
             
+            localStorage.removeItem('savedEmployeeId');
+
             if (attendanceListener) {
                 attendanceListener();
                 attendanceListener = null;
@@ -782,7 +931,6 @@
             const todayString = getTodayDateString();
             const todayData = globalAttendanceList.find(record => record.date === todayString);
             
-            // ពិនិត្យម៉ោង
             const canCheckIn = checkShiftTime(currentUserShift, 'checkIn');
             const canCheckOut = checkShiftTime(currentUserShift, 'checkOut');
 
@@ -800,7 +948,7 @@
             if (todayData) {
                 if (todayData.checkIn) {
                     checkInButton.disabled = true;
-                    checkOutButton.disabled = false; // បើកសិន
+                    checkOutButton.disabled = false; 
                     attendanceStatus.textContent = `បាន Check-in ម៉ោង: ${todayData.checkIn}`;
                     attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
                     
@@ -818,7 +966,7 @@
         }
 
         /**
-         * 10. ដំណើរការ Check In (*** កែសម្រួល៖ ពិនិត្យទីតាំង ***)
+         * 10. ដំណើរការ Check In
          */
         async function handleCheckIn() {
             if (!attendanceCollectionRef || !currentUser) return;
@@ -829,11 +977,25 @@
                 return;
             }
 
-            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
+            // --- 2. ពិនិត្យរូបថត (Face Capture) ---
             checkInButton.disabled = true;
             checkOutButton.disabled = true;
-            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
+            attendanceStatus.textContent = 'សូមបើកកាមេរ៉ា...';
             attendanceStatus.classList.add('animate-pulse');
+
+            try {
+                await captureFace(); 
+                console.log('Face capture successful.');
+            } catch (error) {
+                console.error("Face Capture Error:", error.message);
+                showMessage('បញ្ហាកាមេរ៉ា', error.message, true);
+                updateButtonState(); 
+                attendanceStatus.classList.remove('animate-pulse');
+                return;
+            }
+
+            // --- 3. ពិនិត្យទីតាំង (Location Check) ---
+            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
 
             let userCoords;
             try {
@@ -842,11 +1004,11 @@
                 
                 if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
                     showMessage('បញ្ហាទីតាំង', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។', true);
-                    updateButtonState(); // Reset buttons
+                    updateButtonState(); 
                     attendanceStatus.classList.remove('animate-pulse');
                     attendanceStatus.textContent = 'បរាជ័យ (ក្រៅទីតាំង)';
                     attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
-                    return; // បញ្ឈប់
+                    return; 
                 }
                 
                 console.log('User is INSIDE the area.');
@@ -854,12 +1016,12 @@
             } catch (error) {
                 console.error("Location Error:", error.message);
                 showMessage('បញ្ហាទីតាំង', error.message, true);
-                updateButtonState(); // Reset buttons
+                updateButtonState(); 
                 attendanceStatus.classList.remove('animate-pulse');
-                return; // បញ្ឈប់
+                return; 
             }
             
-            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
+            // --- 4. ដំណើរការរក្សាទុក (Save to Firebase) ---
             attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
 
             const now = new Date();
@@ -879,8 +1041,7 @@
                 formattedDate: formatDate(now),
                 checkIn: formatTime(now),
                 checkOut: null,
-                // រក្សាទុកទីតាំង
-                checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude }
+                checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
             };
 
             try {
@@ -896,7 +1057,7 @@
         }
 
         /**
-         * 11. ដំណើរការ Check Out (*** កែសម្រួល៖ ពិនិត្យទីតាំង ***)
+         * 11. ដំណើរការ Check Out
          */
         async function handleCheckOut() {
             if (!attendanceCollectionRef) return;
@@ -907,11 +1068,25 @@
                 return;
             }
 
-            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
+            // --- 2. ពិនិត្យរូបថត (Face Capture) ---
             checkInButton.disabled = true;
             checkOutButton.disabled = true;
-            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
+            attendanceStatus.textContent = 'សូមបើកកាមេរ៉ា...';
             attendanceStatus.classList.add('animate-pulse');
+
+            try {
+                await captureFace(); 
+                console.log('Face capture successful.');
+            } catch (error) {
+                console.error("Face Capture Error:", error.message);
+                showMessage('បញ្ហាកាមេរ៉ា', error.message, true);
+                updateButtonState(); 
+                attendanceStatus.classList.remove('animate-pulse');
+                return;
+            }
+
+            // --- 3. ពិនិត្យទីតាំង (Location Check) ---
+            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
 
             let userCoords;
             try {
@@ -937,7 +1112,7 @@
                 return; 
             }
 
-            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
+            // --- 4. ដំណើរការរក្សាទុក (Save to Firebase) ---
             attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
             
             const now = new Date();
@@ -946,7 +1121,7 @@
             const data = {
                 checkOutTimestamp: now.toISOString(),
                 checkOut: formatTime(now),
-                checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude }
+                checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude },
             };
 
             try {
@@ -983,10 +1158,64 @@
         });
 
 
-        logoutButton.addEventListener('click', logout);
+        logoutButton.addEventListener('click', () => {
+            showConfirmation('ចាកចេញ', 'តើអ្នកប្រាកដជាចង់ចាកចេញមែនទេ? គណនីរបស់អ្នកនឹងមិនត្រូវបានចងចាំទៀតទេ។', 'ចាកចេញ', () => {
+                logout();
+                hideMessage();
+            });
+        });
+        
+        exitAppButton.addEventListener('click', () => {
+            showConfirmation('បិទកម្មវិធី', 'តើអ្នកប្រាកដជាចង់បិទកម្មវិធីមែនទេ?', 'បិទកម្មវិធី', () => {
+                window.close();
+                hideMessage();
+            });
+        });
+
         checkInButton.addEventListener('click', handleCheckIn);
         checkOutButton.addEventListener('click', handleCheckOut);
-        modalCloseButton.addEventListener('click', hideMessage);
+        
+        modalCancelButton.addEventListener('click', hideMessage);
+        
+        modalConfirmButton.addEventListener('click', () => {
+            if (currentConfirmCallback) {
+                currentConfirmCallback(); 
+            } else {
+                hideMessage(); 
+            }
+        });
+
+        takePictureButton.addEventListener('click', () => {
+            const context = photoCanvas.getContext('2d');
+            photoCanvas.width = cameraStreamEl.videoWidth;
+            photoCanvas.height = cameraStreamEl.videoHeight;
+            
+            context.save();
+            context.scale(-1, 1);
+            context.drawImage(cameraStreamEl, -photoCanvas.width, 0, photoCanvas.width, photoCanvas.height);
+            context.restore();
+            
+            stopCameraStream();
+            cameraModal.classList.add('modal-hidden');
+            cameraModal.classList.remove('modal-visible');
+            if (currentCameraResolve) {
+                currentCameraResolve(true); 
+                currentCameraResolve = null;
+                currentCameraReject = null;
+            }
+        });
+
+        cancelCameraButton.addEventListener('click', () => {
+            stopCameraStream();
+            cameraModal.classList.add('modal-hidden');
+            cameraModal.classList.remove('modal-visible');
+            if (currentCameraReject) {
+                currentCameraReject(new Error('អ្នកប្រើប្រាស់បានបោះបង់ការថតរូប។'));
+                currentCameraResolve = null;
+                currentCameraReject = null;
+            }
+        });
+
 
         // --- Initial Call ---
         document.addEventListener('DOMContentLoaded', initializeAppFirebase);
