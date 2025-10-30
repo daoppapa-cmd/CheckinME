@@ -25,17 +25,17 @@ let attendanceCollectionRef = null;
 let attendanceListener = null;
 let currentConfirmCallback = null;
 
-// *** ថ្មី: AI & Camera Global Variables ***
+// --- AI & Camera Global Variables ---
 let modelsLoaded = false;
 let currentUserFaceMatcher = null;
 let currentScanAction = null; // 'checkIn' or 'checkOut'
 let videoStream = null;
-let scanInterval = null;
 const FACE_MATCH_THRESHOLD = 0.5; // កំណត់កម្រិតភាពត្រឹមត្រូវ (0.1 = ខ្ពស់, 0.6 = ទាប)
 
-// --- Google Sheet Configuration (ដូចเดิม) ---
+// --- Google Sheet Configuration ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
-// ... (COL_INDEX, GVIZ_URL ដូចเดิม)
+const SHEET_NAME = 'DIList';
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
 const COL_INDEX = {
     ID: 0,    // E: អត្តលេខ
     GROUP: 2,   // G: ក្រុម
@@ -52,11 +52,8 @@ const COL_INDEX = {
     SHIFT_SAT: 29, // AH: សៅរ៍
     SHIFT_SUN: 30  // AI: អាទិត្យ
 };
-const SHEET_NAME = 'DIList';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
 
-
-// --- Firebase Configuration (ដូចเดิม) ---
+// --- Firebase Configuration ---
 const firebaseConfig = {
     apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
     authDomain: "checkme-10e18.firebaseapp.com",
@@ -67,7 +64,7 @@ const firebaseConfig = {
     measurementId: "G-QCJ2JH4WH6"
 };
 
-// --- តំបន់ទីតាំង (Polygon Geofence) (ដូចเดิม) ---
+// --- តំបន់ទីតាំង (Polygon Geofence) ---
 const allowedAreaCoords = [
     [11.415206789703271, 104.7642005060435],
     [11.41524294053174, 104.76409925265823],
@@ -76,7 +73,6 @@ const allowedAreaCoords = [
 ];
 
 // --- DOM Elements ---
-// ... (DOM Elements ទាំងអស់ដូចเดิม) ...
 const loadingView = document.getElementById('loadingView');
 const loadingText = document.getElementById('loadingText');
 const employeeListView = document.getElementById('employeeListView');
@@ -106,19 +102,18 @@ const modalActions = document.getElementById('modalActions');
 const modalCancelButton = document.getElementById('modalCancelButton');
 const modalConfirmButton = document.getElementById('modalConfirmButton');
 
-// *** ថ្មី: Camera Modal DOM Elements ***
+// --- Camera Modal DOM Elements ---
 const cameraModal = document.getElementById('cameraModal');
 const videoElement = document.getElementById('videoElement');
 const cameraCanvas = document.getElementById('cameraCanvas');
 const cameraCloseButton = document.getElementById('cameraCloseButton');
 const cameraLoadingText = document.getElementById('cameraLoadingText');
-const cameraLoadingContainer = document.getElementById('cameraLoadingContainer');
+const cameraHelpText = document.getElementById('cameraHelpText');
+const captureButton = document.getElementById('captureButton');
 
 
-// --- Helper Functions (ដូចเดิม) ---
-// ... (changeView, showMessage, showConfirmation, hideMessage) ...
-// ... (getTodayDateString, formatTime, formatDate) ...
-// ... (checkShiftTime, getUserLocation, isInsideArea) ...
+// --- Helper Functions ---
+
 function changeView(viewId) {
     loadingView.style.display = 'none';
     employeeListView.style.display = 'none';
@@ -309,15 +304,13 @@ function isInsideArea(lat, lon) {
 }
 
 
-// --- *** ថ្មី: AI & Camera Functions *** ---
+// --- AI & Camera Functions ---
 
 /**
- * ផ្ទុក AI Models ពី Folder '/Model'
+ * ផ្ទុក AI Models ពី Folder '/models'
  */
-// កូដថ្មី (ត្រឹមត្រូវ)៖
 async function loadAIModels() {
-    const MODEL_URL = './models'; // <-- កែជា m តូច
-//...
+    const MODEL_URL = './models'; // ប្រាកដថាជា m តូច
     loadingText.textContent = 'កំពុងទាញយក AI Models...';
     try {
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
@@ -330,7 +323,7 @@ async function loadAIModels() {
         await fetchGoogleSheetData();
     } catch (e) {
         console.error("Error loading AI models", e);
-        showMessage('បញ្ហាធ្ងន់ធ្ងរ', `មិនអាចទាញយក AI Models បានទេ។ សូមពិនិត្យ Folder 'Model' (M ធំ)។ Error: ${e.message}`, true);
+        showMessage('បញ្ហាធ្ងន់ធ្ងរ', `មិនអាចទាញយក AI Models បានទេ។ សូមពិនិត្យ Folder 'models' (m តូច)។ Error: ${e.message}`, true);
     }
 }
 
@@ -372,7 +365,7 @@ async function prepareFaceMatcher(imageUrl) {
 }
 
 /**
- * បង្ហាញ Modal កាមេរ៉ា និងចាប់ផ្តើម Stream
+ * បង្ហាញ Modal កាមេរ៉ា និងត្រៀមប៊ូតុងថត
  */
 async function startFaceScan(action) {
     currentScanAction = action; // 'checkIn' or 'checkOut'
@@ -387,8 +380,13 @@ async function startFaceScan(action) {
         return;
     }
     
-    // បង្ហាញ Modal
+    // Reset UI
     cameraLoadingText.textContent = 'កំពុងស្នើសុំកាមេរ៉ា...';
+    cameraHelpText.textContent = 'សូមអនុញ្ញាតឱ្យប្រើប្រាស់កាមេរ៉ា';
+    captureButton.style.display = 'none';
+    captureButton.disabled = false;
+    cameraCanvas.style.display = 'none'; // លាក់ Canvas
+
     cameraModal.classList.remove('modal-hidden');
     cameraModal.classList.add('modal-visible');
 
@@ -404,7 +402,10 @@ async function startFaceScan(action) {
         videoElement.srcObject = videoStream;
         
         videoElement.onplay = () => {
-            runFaceDetectionLoop();
+            // *** ថ្មី: កាមេរ៉ារួចរាល់, បង្ហាញប៊ូតុងថត ***
+            cameraLoadingText.textContent = 'ត្រៀមរួចរាល់';
+            cameraHelpText.textContent = 'សូមដាក់មុខឱ្យចំ រួចចុចប៊ូតុងថត';
+            captureButton.style.display = 'flex'; // បង្ហាញប៊ូតុង
         };
 
     } catch (err) {
@@ -418,10 +419,6 @@ async function startFaceScan(action) {
  * បិទកាមេរ៉ា និង Stream
  */
 function stopCamera() {
-    if (scanInterval) {
-        clearInterval(scanInterval);
-        scanInterval = null;
-    }
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
@@ -441,39 +438,53 @@ function hideCameraModal() {
 }
 
 /**
- * ដំណើរការ Loop ស្កេនមុខ
+ * មុខងារសម្រាប់ថត និងវិភាគ
  */
-function runFaceDetectionLoop() {
-    if (scanInterval) return; // កុំឱ្យ Run ជាន់គ្នា
+async function handleCaptureAndAnalyze() {
+    if (!videoStream) return; // បើមិនមានកាមេរ៉ា មិនត្រូវធ្វើអ្វីទេ
 
+    // 1. បង្ហាញ UI ថា កំពុងដំណើរការ
+    cameraLoadingText.textContent = 'កំពុងវិភាគ...';
+    cameraHelpText.textContent = 'សូមរង់ចាំបន្តិច';
+    captureButton.disabled = true;
+    
+    // 2. រៀបចំ Canvas សម្រាប់គូររូប (ដើម្បីទាញរូបពី Video)
     const displaySize = { width: videoElement.videoWidth, height: videoElement.videoHeight };
     faceapi.matchDimensions(cameraCanvas, displaySize);
+    
+    // គូររូបពី Video ទៅលើ Canvas (បណ្តោះអាសន្ន)
+    cameraCanvas.getContext('2d').drawImage(videoElement, 0, 0, displaySize.width, displaySize.height);
 
-    scanInterval = setInterval(async () => {
-        if (!videoStream) return; // បើកាមេរ៉ាបិទ គួរតែឈប់
-
-        const detection = await faceapi.detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+    try {
+        // 3. ស្កេនរកមុខ *តែម្តង* ពី Canvas
+        const detection = await faceapi.detectSingleFace(cameraCanvas, new faceapi.TinyFaceDetectorOptions())
                                      .withFaceLandmarks()
                                      .withFaceDescriptor();
 
+        if (!detection) {
+            // រកមុខមិនឃើញ
+            cameraLoadingText.textContent = 'រកមិនឃើញផ្ទៃមុខ!';
+            cameraHelpText.textContent = 'សូមដាក់មុខឱ្យចំ រួចព្យាយាមម្តងទៀត។';
+            captureButton.disabled = false; // អនុញ្ញាតឱ្យថតម្តងទៀត
+            return;
+        }
+
+        // 4. ប្រសិនបើរកឃើញ, ចាប់ផ្តើមប្រៀបធៀប
+        const bestMatch = currentUserFaceMatcher.findBestMatch(detection.descriptor);
+        const matchPercentage = Math.round((1 - bestMatch.distance) * 100);
+
+        // គូរប្រអប់ជុំវិញមុខ (ដើម្បីឱ្យអ្នកប្រើឃើញ)
         const resizedDetection = faceapi.resizeResults(detection, displaySize);
-        cameraCanvas.getContext('2d').clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+        faceapi.draw.drawDetections(cameraCanvas, resizedDetection);
+        cameraCanvas.style.display = 'block'; // បង្ហាញ Canvas ដែលមានគូសប្រអប់
 
-        if (resizedDetection) {
-            // គូសប្រអប់ជុំវិញមុខ
-            faceapi.draw.drawDetections(cameraCanvas, resizedDetection);
-            cameraLoadingText.textContent = 'កំពុងវិភាគ...';
-
-            // ប្រៀបធៀបមុខ
-            const bestMatch = currentUserFaceMatcher.findBestMatch(resizedDetection.descriptor);
-            const matchPercentage = Math.round((1 - bestMatch.distance) * 100);
-
-            if (bestMatch.label !== 'unknown' && bestMatch.distance < FACE_MATCH_THRESHOLD) {
-                // *** ជោគជ័យ ***
-                cameraLoadingText.textContent = `ស្គាល់ជា: ${currentUser.name} (${matchPercentage}%)`;
-                
-                // ឈប់ Loop, បិទកាមេរ៉ា
-                stopCamera();
+        if (bestMatch.label !== 'unknown' && bestMatch.distance < FACE_MATCH_THRESHOLD) {
+            // *** ជោគជ័យ ***
+            cameraLoadingText.textContent = `ស្គាល់ជា: ${currentUser.name} (${matchPercentage}%)`;
+            cameraHelpText.textContent = 'កំពុងបន្តដំណើរការ...';
+            
+            // រង់ចាំ 1 វិនាទី (ឱ្យអ្នកប្រើឃើញលទ្ធផល)
+            setTimeout(() => {
                 hideCameraModal();
 
                 // បន្តដំណើរការ CheckIn/CheckOut
@@ -482,21 +493,25 @@ function runFaceDetectionLoop() {
                 } else if (currentScanAction === 'checkOut') {
                     handleCheckOut();
                 }
+            }, 1000);
 
-            } else {
-                // ស្គាល់ តែមិនមែនជាមនុស្សត្រឹមត្រូវ
-                cameraLoadingText.textContent = `មិនត្រឹមត្រូវ... (${matchPercentage}%)`;
-            }
         } else {
-            // រកមុខមិនឃើញ
-            cameraLoadingText.textContent = 'រកមិនឃើញផ្ទៃមុខ...';
+            // *** បរាជ័យ (មិនស្គាល់ ឬ មិនត្រូវ) ***
+            cameraLoadingText.textContent = `មិនត្រឹមត្រូវ... (${matchPercentage}%)`;
+            cameraHelpText.textContent = 'នេះមិនមែនជាគណនីរបស់អ្នកទេ។ សូមព្យាយាមម្តងទៀត។';
+            captureButton.disabled = false; // អនុញ្ញាតឱ្យថតម្តងទៀត
         }
 
-    }, 300); // ស្កេនរៀងរាល់ 300ms
+    } catch (e) {
+        console.error("Analysis Error:", e);
+        cameraLoadingText.textContent = 'ការវិភាគមានបញ្ហា!';
+        cameraHelpText.textContent = e.message;
+        captureButton.disabled = false;
+    }
 }
 
 
-// --- Main Functions (កែប្រែ) ---
+// --- Main Functions ---
 
 async function initializeAppFirebase() {
     try {
@@ -516,8 +531,7 @@ async function setupAuthListener() {
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 console.log('Firebase Auth user signed in:', user.uid);
-                // *** កែប្រែ: កុំទាញទិន្នន័យបុគ្គលិកភ្លាម ***
-                // *** ផ្ទុក AI Models ជាមុនសិន ***
+                // ផ្ទុក AI Models ជាមុនសិន
                 await loadAIModels(); 
                 resolve();
             } else {
@@ -535,10 +549,9 @@ async function setupAuthListener() {
 
 async function fetchGoogleSheetData() {
     changeView('loadingView'); 
-    loadingText.textContent = 'កំពុងទាញបញ្ជីបុគ្គលិក...'; // ឥឡូវ Text នេះបង្ហាញ *បន្ទាប់ពី* ផ្ទុក AI
+    loadingText.textContent = 'កំពុងទាញបញ្ជីបុគ្គលិក...'; 
         
     try {
-        // ... (កូដ Fetch Google Sheet ដូចเดิม) ...
         const response = await fetch(GVIZ_URL);
         if (!response.ok) {
             throw new Error(`Network response was not ok (${response.status})`);
@@ -600,13 +613,13 @@ async function fetchGoogleSheetData() {
         } else {
             changeView('employeeListView'); 
         }
+        
     } catch (error) {
         console.error('Fetch Google Sheet Error:', error);
         showMessage('បញ្ហាទាញទិន្នន័យ', `មិនអាចទាញទិន្នន័យពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន Publish to the web។ Error: ${error.message}`, true);
     }
 }
 
-// ... (renderEmployeeList ដូចเดิม) ...
 function renderEmployeeList(employees) {
     employeeListContainer.innerHTML = ''; 
     employeeListContainer.classList.remove('hidden');
@@ -634,10 +647,6 @@ function renderEmployeeList(employees) {
     });
 }
 
-
-/**
- * កែប្រែ: ត្រូវហៅ prepareFaceMatcher
- */
 function selectUser(employee) {
     console.log('User selected:', employee);
     currentUser = employee;
@@ -671,18 +680,17 @@ function selectUser(employee) {
     changeView('attendanceView');
     setupAttendanceListener();
 
-    // *** ថ្មី: រៀបចំ Face Matcher នៅ Background ***
+    // រៀបចំ Face Matcher នៅ Background
     prepareFaceMatcher(employee.photoUrl);
 
     employeeListContainer.classList.add('hidden');
     searchInput.value = '';
 }
 
-// ... (logout, setupAttendanceListener, renderHistory, updateButtonState ដូចเดิม) ...
 function logout() {
     currentUser = null;
     currentUserShift = null; 
-    currentUserFaceMatcher = null; //*** ថ្មី: Clear face matcher
+    currentUserFaceMatcher = null; // Clear face matcher
     
     localStorage.removeItem('savedEmployeeId');
 
@@ -797,15 +805,13 @@ function updateButtonState() {
     }
 }
 
-
 /**
- * 10. ដំណើរការ Check In (ឥឡូវនេះ ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
+ * 10. ដំណើរការ Check In (ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
  */
 async function handleCheckIn() {
     if (!attendanceCollectionRef || !currentUser) return;
     
     // --- 1. ពិនិត្យវេន (Shift Check) ---
-    // (មុខងារនេះនៅតែសំខាន់)
     if (!checkShiftTime(currentUserShift, 'checkIn')) {
         showMessage('បញ្ហា', `ក្រៅម៉ោង Check-in សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
         return;
@@ -842,7 +848,6 @@ async function handleCheckIn() {
     }
     
     // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
-    // ... (កូដរក្សាទុក ដូចเดิม) ...
     attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
 
     const now = new Date();
@@ -878,7 +883,7 @@ async function handleCheckIn() {
 }
 
 /**
- * 11. ដំណើរការ Check Out (ឥឡូវនេះ ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
+ * 11. ដំណើរការ Check Out (ត្រូវបានហៅ *បន្ទាប់ពី* ស្កេនមុខជោគជ័យ)
  */
 async function handleCheckOut() {
     if (!attendanceCollectionRef) return;
@@ -890,7 +895,6 @@ async function handleCheckOut() {
     }
 
     // --- 2. ពិនិត្យទីតាំង (Location Check) ---
-    // ... (កូដពិនិត្យទីតាំង ដូចเดิม) ...
     checkInButton.disabled = true;
     checkOutButton.disabled = true;
     attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
@@ -921,7 +925,6 @@ async function handleCheckOut() {
     }
 
     // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
-    // ... (កូដរក្សាទុក ដូចเดิม) ...
     attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
     
     const now = new Date();
@@ -945,9 +948,8 @@ async function handleCheckOut() {
     }
 }
 
-// --- Event Listeners (កែប្រែ) ---
+// --- Event Listeners ---
  
-// ... (Search Listeners ដូចเดิม) ...
 searchInput.addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const filteredEmployees = allEmployees.filter(emp => 
@@ -967,7 +969,7 @@ searchInput.addEventListener('blur', () => {
     }, 200); 
 });
 
-// ... (Logout/Exit Listeners ដូចเดิม) ...
+
 logoutButton.addEventListener('click', () => {
     showConfirmation('ចាកចេញ', 'តើអ្នកប្រាកដជាចង់ចាកចេញមែនទេ? គណនីរបស់អ្នកនឹងមិនត្រូវបានចងចាំទៀតទេ។', 'ចាកចេញ', () => {
         logout();
@@ -982,11 +984,11 @@ exitAppButton.addEventListener('click', () => {
     });
 });
 
-// *** កែប្រែ: ប៊ូតុង Check-in/Out ឥឡូវត្រូវហៅ startFaceScan ***
+// ប៊ូតុង Check-in/Out ឥឡូវត្រូវហៅ startFaceScan
 checkInButton.addEventListener('click', () => startFaceScan('checkIn'));
 checkOutButton.addEventListener('click', () => startFaceScan('checkOut'));
 
-// ... (Modal Confirm/Cancel Listeners ដូចเดิม) ...
+// Modal Confirm/Cancel Listeners
 modalCancelButton.addEventListener('click', hideMessage);
 modalConfirmButton.addEventListener('click', () => {
     if (currentConfirmCallback) {
@@ -996,13 +998,16 @@ modalConfirmButton.addEventListener('click', () => {
     }
 });
 
-// *** ថ្មី: ប៊ូតុងបិទកាមេរ៉ា ***
+// ប៊ូតុងបិទកាមេរ៉ា
 cameraCloseButton.addEventListener('click', hideCameraModal);
 
+// ប៊ូតុងថត ហៅ handleCaptureAndAnalyze
+captureButton.addEventListener('click', handleCaptureAndAnalyze);
 
-// --- Initial Call (កែប្រែ) ---
+
+// --- Initial Call ---
 document.addEventListener('DOMContentLoaded', () => {
-    // *** កែប្រែ: ហៅតែ initializeAppFirebase ទេ ***
+    // ហៅតែ initializeAppFirebase ទេ
     // loadAIModels() នឹងត្រូវបានហៅពីក្នុង Auth Listener
     initializeAppFirebase();
 });
