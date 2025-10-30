@@ -81,9 +81,8 @@ body {
     align-items: center;
     justify-content: center;
     
-    /* *** បានកែប្រែ *** */
-    /* បានលុប margin-top: -32px ចេញ */
-    margin-top: 8px; /* បន្ថែម margin-top ធម្មតា ដើម្បីឱ្យវាស្ថិតនៅក្រោមអក្សរ */
+    /* *** បានកែប្រែ (Update ថ្មី) *** */
+    margin-top: 16px; /* បង្កើនគម្លាតទៅ 16px (ជំនួស 8px មុន) */
     
     z-index: 65;
     cursor: pointer;
