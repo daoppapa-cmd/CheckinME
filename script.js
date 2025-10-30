@@ -312,7 +312,7 @@ async function setupAuthListener() {
             } else {
                 try {
                     await signInAnonymously(auth);
-        _         } catch (error) {
+                } catch (error) {
                     console.error("Firebase Sign In Error:", error);
                     showMessage('បញ្ហា Sign In', `មិនអាច Sign In ទៅ Firebase បានទេ: ${error.message}`, true);
                     reject(error);
@@ -392,7 +392,7 @@ async function fetchGoogleSheetData() {
     } catch (error) {
         console.error('Fetch Google Sheet Error:', error);
         showMessage('បញ្ហាទាញទិន្នន័យ', `មិនអាចទាញទិន្នន័យពី Google Sheet បានទេ។ សូមប្រាកដថា Sheet ត្រូវបាន Publish to the web។ Error: ${error.message}`, true);
-</i>   }
+    }
 }
 
 function renderEmployeeList(employees) {
