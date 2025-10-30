@@ -250,14 +250,13 @@
         let allEmployees = []; // ផ្ទុកបុគ្គលិកទាំងអស់ពី Google Sheet
         let globalAttendanceList = []; // ផ្ទុកប្រវត្តិវត្តមានទាំងអស់
         let currentUser = null; // បុគ្គលិកដែលបានជ្រើសរើស
-        let currentUserShift = null; // *** ថ្មី៖ វេនធ្វើការសម្រាប់ថ្ងៃនេះ ***
+        let currentUserShift = null; // វេនធ្វើការសម្រាប់ថ្ងៃនេះ
         let attendanceCollectionRef = null; // Reference ទៅ Firestore collection
         let attendanceListener = null; // Unsubscribe function សម្រាប់ onSnapshot
 
-        // --- Google Sheet Configuration (*** កែសម្រួលធំ ***) ---
+        // --- Google Sheet Configuration ---
         const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const SHEET_NAME = 'DIList';
-        // កែសម្រួល៖ Range ទៅ E9:AI (Col E ដល់ AI)
         const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
         const COL_INDEX = {
             ID: 0,      // E: អត្តលេខ
@@ -286,35 +285,36 @@
             appId: "1:1030447497157:web:9792086df1e864559fd5ac",
             measurementId: "G-QCJ2JH4WH6"
         };
+
+        // --- *** ថ្មី៖ តំបន់ទីតាំង (Polygon Geofence) *** ---
+        const allowedAreaCoords = [
+            [11.415206789703271, 104.7642005060435],
+            [11.41524294053174, 104.76409925265823],
+            [11.413750665249953, 104.7633762203053],
+            [11.41370399757057, 104.7634714387206]
+        ];
         
-        // --- DOM Elements (*** កែសម្រួល៖ បន្ថែម UI ថ្មី ***) ---
+        // --- DOM Elements ---
         const loadingView = document.getElementById('loadingView');
         const employeeListView = document.getElementById('employeeListView');
         const attendanceView = document.getElementById('attendanceView');
-        
         const searchInput = document.getElementById('searchInput');
         const employeeListContainer = document.getElementById('employeeListContainer');
-        
         const welcomeMessage = document.getElementById('welcomeMessage');
         const logoutButton = document.getElementById('logoutButton');
         const profileImage = document.getElementById('profileImage');
         const profileName = document.getElementById('profileName');
         const profileId = document.getElementById('profileId');
-        // UI ថ្មី
         const profileGender = document.getElementById('profileGender');
         const profileDepartment = document.getElementById('profileDepartment');
         const profileGroup = document.getElementById('profileGroup');
         const profileGrade = document.getElementById('profileGrade');
         const profileShift = document.getElementById('profileShift');
-        
         const checkInButton = document.getElementById('checkInButton');
         const checkOutButton = document.getElementById('checkOutButton');
         const attendanceStatus = document.getElementById('attendanceStatus');
-        
         const historyTableBody = document.getElementById('historyTableBody');
         const noHistoryRow = document.getElementById('noHistoryRow');
-
-        // Modal Elements
         const customModal = document.getElementById('customModal');
         const modalTitle = document.getElementById('modalTitle');
         const modalMessage = document.getElementById('modalMessage');
@@ -397,12 +397,14 @@
         }
         
         /**
-         * *** ថ្មី៖ ពិនិត្យពេលវេលាស្កេន ធៀបនឹងវេន (Shift) ***
-         * @param {string} shiftType (e.g., "ពេញម៉ោង", "Uptime")
-         * @param {string} checkType ("checkIn" or "checkOut")
-         * @returns {boolean} (True = ក្នុងម៉ោង, False = ក្រៅម៉ោង)
+         * ពិនិត្យពេលវេលាស្កេន ធៀបនឹងវេន (Shift)
          */
         function checkShiftTime(shiftType, checkType) {
+            if (!shiftType || shiftType === 'N/A') {
+                console.warn(`វេនមិនបានកំណត់ (N/A)។ មិនអនុញ្ញាតឱ្យស្កេន។`);
+                return false; // វេនមិនបានកំណត់
+            }
+
             if (shiftType === 'Uptime') {
                 return true; // វេន Uptime អាចស្កេនពេលណាក៏បាន
             }
@@ -410,7 +412,6 @@
             const now = new Date();
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
-            // បំប្លែងម៉ោងបច្ចុប្បន្នទៅជាទសភាគ (e.g., 6:50 AM -> 6.83)
             const currentTime = currentHour + (currentMinute / 60);
 
             const shiftRules = {
@@ -446,6 +447,78 @@
 
             console.log(`ក្រៅម៉ោង: ម៉ោងបច្ចុប្បន្ន (${currentTime}) មិនស្ថិតក្នុងចន្លោះ [${min}, ${max}] សម្រាប់វេន "${shiftType}"`);
             return false; // ក្រៅម៉ោង
+        }
+
+        /**
+         * *** ថ្មី៖ យកទីតាំងបច្ចុប្បន្ន (Geolocation) ***
+         * @returns {Promise<Coordinates>}
+         */
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported by your browser.'));
+                    return;
+                }
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000, // 10 វិនាទី
+                    maximumAge: 0 // បង្ខំឱ្យយកទីតាំងថ្មី
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve(position.coords);
+                    },
+                    (error) => {
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                // *** កែសម្រួល៖ បន្ថែមសារណែនាំ ***
+                                reject(new Error('សូមអនុញ្ញាតឱ្យប្រើប្រាស់ទីតាំង។ ប្រសិនបើអ្នកបាន Block, សូមចូលទៅកាន់ Site Settings របស់ Browser ដើម្បី Allow។'));
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                reject(new Error('មិនអាចទាញយកទីតាំងបានទេ។'));
+                                break;
+                            case error.TIMEOUT:
+                                reject(new Error('អស់ពេលកំណត់ក្នុងការទាញយកទីតាំង។'));
+                                break;
+                            default:
+                                reject(new Error('មានបញ្ហាក្នុងការទាញយកទីតាំង។'));
+                        }
+                    },
+                    options
+                );
+            });
+        }
+
+        /**
+         * *** ថ្មី៖ ពិនិត្យមើលថាតើចំណុចមួយស្ថិតនៅក្នុងពហុកោណ (Polygon) ដែរឬទេ ***
+         * (Ray Casting Algorithm)
+         * @param {number} lat - User's Latitude
+         * @param {number} lon - User's Longitude
+         * @returns {boolean}
+         */
+        function isInsideArea(lat, lon) {
+            const polygon = allowedAreaCoords;
+            let isInside = false;
+            const x = lon; // User's X (Longitude)
+            const y = lat; // User's Y (Latitude)
+
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const viy = polygon[i][0]; // Vertex i's Y (lat)
+                const vix = polygon[i][1]; // Vertex i's X (lon)
+                const vjy = polygon[j][0]; // Vertex j's Y (lat)
+                const vjx = polygon[j][1]; // Vertex j's X (lon)
+
+                // ពិនិត្យប្រសិនបើ ray ផ្ដេក កាត់គែម (edge)
+                const intersect = ((viy > y) !== (vjy > y)) &&
+                    (x < (vjx - vix) * (y - viy) / (vjy - viy) + vix);
+                
+                if (intersect) {
+                    isInside = !isInside; // ប្តូរ (Flip) លទ្ធផល
+                }
+            }
+            return isInside;
         }
 
         // --- Main Functions ---
@@ -490,7 +563,7 @@
         }
 
         /**
-         * 3. ទាញទិន្នន័យពី Google Sheet (*** កែសម្រួលធំ ***)
+         * 3. ទាញទិន្នន័យពី Google Sheet
          */
         async function fetchGoogleSheetData() {
             changeView('loadingView'); 
@@ -519,7 +592,6 @@
                         if (!id) {
                             return null;
                         }
-                        // Map ព័ត៌មានថ្មី
                         return {
                             id: String(id).trim(),
                             name: cells[COL_INDEX.NAME]?.v || 'N/A',
@@ -528,7 +600,6 @@
                             group: cells[COL_INDEX.GROUP]?.v || 'N/A',
                             gender: cells[COL_INDEX.GENDER]?.v || 'N/A',
                             grade: cells[COL_INDEX.GRADE]?.v || 'N/A',
-                            // Map វេនទាំងអស់
                             shiftMon: cells[COL_INDEX.SHIFT_MON]?.v || null,
                             shiftTue: cells[COL_INDEX.SHIFT_TUE]?.v || null,
                             shiftWed: cells[COL_INDEX.SHIFT_WED]?.v || null,
@@ -551,8 +622,7 @@
         }
 
         /**
-         * 4. បង្ហាញបញ្ជីបុគ្គលិក (*** កែសម្រួល៖ បង្ហាញព័ត៌មានថ្មី ***)
-         * @param {Array} employees 
+         * 4. បង្ហាញបញ្ជីបុគ្គលិក
          */
         function renderEmployeeList(employees) {
             employeeListContainer.innerHTML = ''; 
@@ -573,7 +643,6 @@
                          onerror="this.src='https://placehold.co/48x48/e2e8f0/64748b?text=Error'">
                     <div>
                         <h3 class="text-md font-semibold text-gray-800">${emp.name}</h3>
-                        <!-- កែសម្រួល៖ បង្ហាញ ក្រុម ជំនួស ផ្នែក -->
                         <p class="text-xs text-gray-500">ID: ${emp.id} | ក្រុម: ${emp.group}</p>
                     </div>
                 `;
@@ -583,14 +652,12 @@
         }
 
         /**
-         * 5. ជ្រើសរើសអ្នកប្រើប្រាស់ (*** កែសម្រួលធំ៖ គណនាវេន ***)
-         * @param {object} employee 
+         * 5. ជ្រើសរើសអ្នកប្រើប្រាស់ (គណនាវេន)
          */
         function selectUser(employee) {
             console.log('User selected:', employee);
             currentUser = employee;
             
-            // *** ថ្មី៖ គណនាវេនធ្វើការសម្រាប់ថ្ងៃនេះ ***
             const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
             const dayToShiftKey = [
                 'shiftSun', 'shiftMon', 'shiftTue', 'shiftWed', 'shiftThu', 'shiftFri', 'shiftSat'
@@ -599,13 +666,12 @@
             currentUserShift = currentUser[shiftKey] || 'N/A'; // រក្សាទុកវេនថ្ងៃនេះ
             console.log(`ថ្ងៃនេះ (Day ${dayOfWeek}), វេនគឺ: ${currentUserShift}`);
 
-            // --- Firestore Path ---
             const firestoreUserId = currentUser.id; 
             const simpleDataPath = `attendance/${firestoreUserId}/records`;
             console.log("Using Firestore Path:", simpleDataPath);
             attendanceCollectionRef = collection(db, simpleDataPath);
 
-            // --- បំពេញព័ត៌មាន Profile (*** កែសម្រួល៖ បំពេញ UI ថ្មី ***) ---
+            // បំពេញព័ត៌មាន Profile
             welcomeMessage.textContent = `សូមស្វាគមន៍`; 
             profileImage.src = employee.photoUrl || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Img';
             profileName.textContent = employee.name;
@@ -628,7 +694,7 @@
          */
         function logout() {
             currentUser = null;
-            currentUserShift = null; // Clear វេន
+            currentUserShift = null; 
             
             if (attendanceListener) {
                 attendanceListener();
@@ -710,7 +776,7 @@
         }
         
         /**
-         * 9. Update ស្ថានភាពប៊ូតុង Check-in/Out (*** កែសម្រួល៖ បញ្ចូល Logic ក្រៅម៉ោង ***)
+         * 9. Update ស្ថានភាពប៊ូតុង Check-in/Out
          */
         function updateButtonState() {
             const todayString = getTodayDateString();
@@ -739,7 +805,7 @@
                     attendanceStatus.className = 'text-center text-sm text-green-700 pb-4 px-6 h-5';
                     
                     if (!canCheckOut && !todayData.checkOut) {
-                        attendanceStatus.textContent += ` (ក្រៅម៉ោង Check-out)`;
+                        attendanceStatus.textContent = `ក្រៅម៉ោង Check-out (${currentUserShift})`;
                         attendanceStatus.className = 'text-center text-sm text-yellow-600 pb-4 px-6 h-5';
                     }
                 }
@@ -752,45 +818,69 @@
         }
 
         /**
-         * 10. ដំណើរការ Check In (*** កែសម្រួល៖ ពិនិត្យវេន & រក្សាទុកទិន្នន័យថ្មី ***)
+         * 10. ដំណើរការ Check In (*** កែសម្រួល៖ ពិនិត្យទីតាំង ***)
          */
         async function handleCheckIn() {
             if (!attendanceCollectionRef || !currentUser) return;
             
-            // *** ថ្មី៖ ពិនិត្យវេនមុនគេ ***
+            // --- 1. ពិនិត្យវេន (Shift Check) ---
             if (!checkShiftTime(currentUserShift, 'checkIn')) {
                 showMessage('បញ្ហា', `ក្រៅម៉ោង Check-in សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
+                return;
+            }
+
+            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
+            checkInButton.disabled = true;
+            checkOutButton.disabled = true;
+            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
+            attendanceStatus.classList.add('animate-pulse');
+
+            let userCoords;
+            try {
+                userCoords = await getUserLocation();
+                console.log('User location:', userCoords.latitude, userCoords.longitude);
+                
+                if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
+                    showMessage('បញ្ហាទីតាំង', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។', true);
+                    updateButtonState(); // Reset buttons
+                    attendanceStatus.classList.remove('animate-pulse');
+                    attendanceStatus.textContent = 'បរាជ័យ (ក្រៅទីតាំង)';
+                    attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+                    return; // បញ្ឈប់
+                }
+                
+                console.log('User is INSIDE the area.');
+                
+            } catch (error) {
+                console.error("Location Error:", error.message);
+                showMessage('បញ្ហាទីតាំង', error.message, true);
+                updateButtonState(); // Reset buttons
+                attendanceStatus.classList.remove('animate-pulse');
                 return; // បញ្ឈប់
             }
             
-            checkInButton.disabled = true;
-            checkOutButton.disabled = true;
+            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
             attendanceStatus.textContent = 'កំពុងដំណើរការ Check-in...';
-            attendanceStatus.classList.add('animate-pulse');
 
             const now = new Date();
             const todayDocId = getTodayDateString(now);
             
-            // *** កែសម្រួល៖ រក្សាទុកទិន្នន័យថ្មីទាំងអស់ ***
             const data = {
-                // ព័ត៌មានបុគ្គលិក
                 employeeId: currentUser.id,
                 employeeName: currentUser.name,
                 department: currentUser.department,
                 group: currentUser.group,
                 grade: currentUser.grade,
                 gender: currentUser.gender,
-                shift: currentUserShift, // វេនថ្ងៃនេះ
-                
-                // ព័ត៌មានពេលវេលា (ទម្រង់ ISO សម្រាប់ Query)
+                shift: currentUserShift, 
                 date: todayDocId, 
                 checkInTimestamp: now.toISOString(), 
                 checkOutTimestamp: null,
-
-                // ព័ត៌មានពេលវេលា (ទម្រង់ Format សម្រាប់បង្ហាញ)
                 formattedDate: formatDate(now),
                 checkIn: formatTime(now),
-                checkOut: null
+                checkOut: null,
+                // រក្សាទុកទីតាំង
+                checkInLocation: { lat: userCoords.latitude, lon: userCoords.longitude }
             };
 
             try {
@@ -806,28 +896,57 @@
         }
 
         /**
-         * 11. ដំណើរការ Check Out (*** កែសម្រួល៖ ពិនិត្យវេន ***)
+         * 11. ដំណើរការ Check Out (*** កែសម្រួល៖ ពិនិត្យទីតាំង ***)
          */
         async function handleCheckOut() {
             if (!attendanceCollectionRef) return;
 
-            // *** ថ្មី៖ ពិនិត្យវេនមុនគេ ***
+            // --- 1. ពិនិត្យវេន (Shift Check) ---
             if (!checkShiftTime(currentUserShift, 'checkOut')) {
                 showMessage('បញ្ហា', `ក្រៅម៉ោង Check-out សម្រាប់វេន "${currentUserShift}" របស់អ្នក។`, true);
-                return; // បញ្ឈប់
+                return;
             }
 
+            // --- 2. ពិនិត្យទីតាំង (Location Check) ---
             checkInButton.disabled = true;
             checkOutButton.disabled = true;
-            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
+            attendanceStatus.textContent = 'កំពុងពិនិត្យទីតាំង...';
             attendanceStatus.classList.add('animate-pulse');
 
+            let userCoords;
+            try {
+                userCoords = await getUserLocation();
+                console.log('User location:', userCoords.latitude, userCoords.longitude);
+
+                if (!isInsideArea(userCoords.latitude, userCoords.longitude)) {
+                    showMessage('បញ្ហាទីតាំង', 'អ្នកមិនស្ថិតនៅក្នុងទីតាំងកំណត់ទេ។ សូមចូលទៅក្នុងតំបន់ការិយាល័យ រួចព្យាយាមម្តងទៀត។', true);
+                    updateButtonState(); 
+                    attendanceStatus.classList.remove('animate-pulse');
+                    attendanceStatus.textContent = 'បរាជ័យ (ក្រៅទីតាំង)';
+                    attendanceStatus.className = 'text-center text-sm text-red-700 pb-4 px-6 h-5';
+                    return; 
+                }
+                
+                 console.log('User is INSIDE the area.');
+
+            } catch (error) {
+                console.error("Location Error:", error.message);
+                showMessage('បញ្ហាទីតាំង', error.message, true);
+                updateButtonState(); 
+                attendanceStatus.classList.remove('animate-pulse');
+                return; 
+            }
+
+            // --- 3. ដំណើរការរក្សាទុក (Save to Firebase) ---
+            attendanceStatus.textContent = 'កំពុងដំណើរការ Check-out...';
+            
             const now = new Date();
             const todayDocId = getTodayDateString(now);
             
             const data = {
                 checkOutTimestamp: now.toISOString(),
-                checkOut: formatTime(now)
+                checkOut: formatTime(now),
+                checkOutLocation: { lat: userCoords.latitude, lon: userCoords.longitude }
             };
 
             try {
