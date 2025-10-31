@@ -30,12 +30,16 @@ let modelsLoaded = false;
 let currentUserFaceMatcher = null;
 let currentScanAction = null; // 'checkIn' or 'checkOut'
 let videoStream = null;
-const FACE_MATCH_THRESHOLD = 0.5; // កំណត់កម្រិតភាពត្រឹមត្រូវ (0.1 = ខ្ពស់, 0.6 = ទាប)
+const FACE_MATCH_THRESHOLD = 0.5;
 
 // --- Google Sheet Configuration ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
 const SHEET_NAME = 'DIList';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AI`;
+
+// *** កែប្រែទី ១: ប្តូរ Range ពី AI ទៅ AJ ***
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AJ`; // <-- បានប្តូរទៅ AJ
+
+// *** កែប្រែទី ២: ប្តូរ Index របស់ PHOTO ***
 const COL_INDEX = {
     ID: 0,    // E: អត្តលេខ
     GROUP: 2,   // G: ក្រុម
@@ -43,14 +47,15 @@ const COL_INDEX = {
     GENDER: 9,  // N: ភេទ
     GRADE: 13,  // R: ថ្នាក់
     DEPT: 14,   // S: ផ្នែកការងារ
-    PHOTO: 22,  // AA: រូបថត
+    // PHOTO: 22, (AA) -> លែងប្រើ
     SHIFT_MON: 24, // AC: ចន្ទ
     SHIFT_TUE: 25, // AD: អង្គារ៍
     SHIFT_WED: 26, // AE: ពុធ
     SHIFT_THU: 27, // AF: ព្រហស្បត្តិ៍
     SHIFT_FRI: 28, // AG: សុក្រ
     SHIFT_SAT: 29, // AH: សៅរ៍
-    SHIFT_SUN: 30  // AI: អាទិត្យ
+    SHIFT_SUN: 30, // AI: អាទិត្យ
+    PHOTO: 31   // AJ: រូបថត (ថ្មី) <-- បានប្តូរទៅ 31
 };
 
 // --- Firebase Configuration ---
@@ -193,6 +198,35 @@ function formatDate(date) {
         return 'Invalid Date';
     }
 }
+
+// *** កែប្រែទី ៣: បន្ថែម Function សម្រាប់ញែក URL ***
+/**
+ * ញែក URL ចេញពី string ដូចជា '=IMAGE("http://...")'
+ * @param {string} sheetValue តម្លៃឆៅពី Google Sheet
+ * @returns {string|null} URL ដែលបានញែក ឬ null
+ */
+function parseImageUrl(sheetValue) {
+    if (!sheetValue || typeof sheetValue !== 'string') {
+        return null;
+    }
+    
+    // ប្រើ Regular Expression ដើម្បីរក URL នៅក្នុង ("...")
+    const match = sheetValue.match(/=IMAGE\("(.+?)"\)/i);
+    
+    if (match && match[1]) {
+        return match[1]; // ត្រឡប់ URL (group ទី 1)
+    }
+    
+    // Fallback: ប្រសិនបើវាមិនមែនជា hàm IMAGE តែជា URL ស្រាប់
+    if (sheetValue.startsWith('http')) {
+        return sheetValue;
+    }
+    
+    // បើមិនដូច្នេះទេ គឺមិនត្រឹមត្រូវ
+    console.warn('Could not parse image URL:', sheetValue);
+    return null;
+}
+
 
 function checkShiftTime(shiftType, checkType) {
     if (!shiftType || shiftType === 'N/A') {
@@ -576,11 +610,15 @@ async function fetchGoogleSheetData() {
                 if (!id) {
                     return null;
                 }
+                
+                // *** កែប្រែទី ៤: ប្រើ Function ថ្មីដើម្បីទាញ Photo URL ***
+                const rawPhotoValue = cells[COL_INDEX.PHOTO]?.v || null;
+                
                 return {
                     id: String(id).trim(),
                     name: cells[COL_INDEX.NAME]?.v || 'N/A',
                     department: cells[COL_INDEX.DEPT]?.v || 'N/A',
-                    photoUrl: cells[COL_INDEX.PHOTO]?.v || null,
+                    photoUrl: parseImageUrl(rawPhotoValue), // <-- ប្រើ Function ថ្មី
                     group: cells[COL_INDEX.GROUP]?.v || 'N/A',
                     gender: cells[COL_INDEX.GENDER]?.v || 'N/A',
                     grade: cells[COL_INDEX.GRADE]?.v || 'N/A',
