@@ -35,11 +35,7 @@ const FACE_MATCH_THRESHOLD = 0.5;
 // --- Google Sheet Configuration ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
 const SHEET_NAME = 'DIList';
-
-// *** កែប្រែទី ១: ប្តូរ Range ពី AI ទៅ AJ ***
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AJ`; // <-- បានប្តូរទៅ AJ
-
-// *** កែប្រែទី ២: ប្តូរ Index របស់ PHOTO ***
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AJ`;
 const COL_INDEX = {
     ID: 0,    // E: អត្តលេខ
     GROUP: 2,   // G: ក្រុម
@@ -47,7 +43,6 @@ const COL_INDEX = {
     GENDER: 9,  // N: ភេទ
     GRADE: 13,  // R: ថ្នាក់
     DEPT: 14,   // S: ផ្នែកការងារ
-    // PHOTO: 22, (AA) -> លែងប្រើ
     SHIFT_MON: 24, // AC: ចន្ទ
     SHIFT_TUE: 25, // AD: អង្គារ៍
     SHIFT_WED: 26, // AE: ពុធ
@@ -55,7 +50,7 @@ const COL_INDEX = {
     SHIFT_FRI: 28, // AG: សុក្រ
     SHIFT_SAT: 29, // AH: សៅរ៍
     SHIFT_SUN: 30, // AI: អាទិត្យ
-    PHOTO: 31   // AJ: រូបថត (ថ្មី) <-- បានប្តូរទៅ 31
+    PHOTO: 31   // AJ: រូបថត (ថ្មី)
 };
 
 // --- Firebase Configuration ---
@@ -199,7 +194,7 @@ function formatDate(date) {
     }
 }
 
-// *** កែប្រែទី ៣: បន្ថែម Function សម្រាប់ញែក URL ***
+// *** បានកែប្រែ (Update ថ្មី) ***
 /**
  * ញែក URL ចេញពី string ដូចជា '=IMAGE("http://...")'
  * @param {string} sheetValue តម្លៃឆៅពី Google Sheet
@@ -210,8 +205,8 @@ function parseImageUrl(sheetValue) {
         return null;
     }
     
-    // ប្រើ Regular Expression ដើម្បីរក URL នៅក្នុង ("...")
-    const match = sheetValue.match(/=IMAGE\("(.+?)"\)/i);
+    // Regex ថ្មី: អនុញ្ញាតឱ្យមានដកឃ្លា ( \s* ) និង ទាំង single/double quotes ( ['"] )
+    const match = sheetValue.match(/=IMAGE\s*\(\s*['"](.+?)['"]\s*\)/i);
     
     if (match && match[1]) {
         return match[1]; // ត្រឡប់ URL (group ទី 1)
@@ -611,7 +606,7 @@ async function fetchGoogleSheetData() {
                     return null;
                 }
                 
-                // *** កែប្រែទី ៤: ប្រើ Function ថ្មីដើម្បីទាញ Photo URL ***
+                // ប្រើ Function ថ្មីដើម្បីទាញ Photo URL
                 const rawPhotoValue = cells[COL_INDEX.PHOTO]?.v || null;
                 
                 return {
