@@ -205,8 +205,9 @@ function parseImageUrl(sheetValue) {
         return null;
     }
     
-    // Regex ថ្មី: អនុញ្ញាតឱ្យមានដកឃ្លា ( \s* ) និង ទាំង single/double quotes ( ['"] )
-    const match = sheetValue.match(/=IMAGE\s*\(\s*['"](.+?)['"]\s*\)/i);
+    // Regex ថ្មី: ស្វែងរក URL (http ឬ https) ដែលស្ថិតនៅចន្លោះ "..." ឬ '...'
+    // វាមិនខ្វល់ពី IMAGE() ទៀតទេ ធ្វើឱ្យវាកាន់តែសាមញ្ញ
+    const match = sheetValue.match(/['"](https?:\/\/[^'"]+)['"]/i);
     
     if (match && match[1]) {
         return match[1]; // ត្រឡប់ URL (group ទី 1)
