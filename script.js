@@ -35,7 +35,8 @@ const FACE_MATCH_THRESHOLD = 0.5;
 // --- Google Sheet Configuration ---
 const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
 const SHEET_NAME = 'DIList';
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AJ`;
+// Range នៅតែ E9:AJ (ត្រឹមត្រូវ)
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&range=E9:AJ`; 
 const COL_INDEX = {
     ID: 0,    // E: អត្តលេខ
     GROUP: 2,   // G: ក្រុម
@@ -50,7 +51,7 @@ const COL_INDEX = {
     SHIFT_FRI: 28, // AG: សុក្រ
     SHIFT_SAT: 29, // AH: សៅរ៍
     SHIFT_SUN: 30, // AI: អាទិត្យ
-    PHOTO: 31   // AJ: រូបថត (ថ្មី)
+    PHOTO: 31   // AJ: រូបថត (Link ត្រង់)
 };
 
 // --- Firebase Configuration ---
@@ -194,34 +195,8 @@ function formatDate(date) {
     }
 }
 
-// *** បានកែប្រែ (Update ថ្មី) ***
-/**
- * ញែក URL ចេញពី string ដូចជា '=IMAGE("http://...")'
- * @param {string} sheetValue តម្លៃឆៅពី Google Sheet
- * @returns {string|null} URL ដែលបានញែក ឬ null
- */
-function parseImageUrl(sheetValue) {
-    if (!sheetValue || typeof sheetValue !== 'string') {
-        return null;
-    }
-    
-    // Regex ថ្មី: ស្វែងរក URL (http ឬ https) ដែលស្ថិតនៅចន្លោះ "..." ឬ '...'
-    // វាមិនខ្វល់ពី IMAGE() ទៀតទេ ធ្វើឱ្យវាកាន់តែសាមញ្ញ
-    const match = sheetValue.match(/['"](https?:\/\/[^'"]+)['"]/i);
-    
-    if (match && match[1]) {
-        return match[1]; // ត្រឡប់ URL (group ទី 1)
-    }
-    
-    // Fallback: ប្រសិនបើវាមិនមែនជា hàm IMAGE តែជា URL ស្រាប់
-    if (sheetValue.startsWith('http')) {
-        return sheetValue;
-    }
-    
-    // បើមិនដូច្នេះទេ គឺមិនត្រឹមត្រូវ
-    console.warn('Could not parse image URL:', sheetValue);
-    return null;
-}
+// *** បានលុប: Function parseImageUrl(sheetValue) ចេញ ***
+// (យើងលែងត្រូវការញែក IMAGE() ទៀតហើយ)
 
 
 function checkShiftTime(shiftType, checkType) {
@@ -607,14 +582,15 @@ async function fetchGoogleSheetData() {
                     return null;
                 }
                 
-                // ប្រើ Function ថ្មីដើម្បីទាញ Photo URL
-                const rawPhotoValue = cells[COL_INDEX.PHOTO]?.v || null;
+                // *** បានកែប្រែ (Update ថ្មី) ***
+                // យក Link ត្រង់ពីជួរឈរ PHOTO (AJ)
+                const photoLink = cells[COL_INDEX.PHOTO]?.v || null;
                 
                 return {
                     id: String(id).trim(),
                     name: cells[COL_INDEX.NAME]?.v || 'N/A',
                     department: cells[COL_INDEX.DEPT]?.v || 'N/A',
-                    photoUrl: parseImageUrl(rawPhotoValue), // <-- ប្រើ Function ថ្មី
+                    photoUrl: photoLink, // <-- ប្រើ Link ត្រង់
                     group: cells[COL_INDEX.GROUP]?.v || 'N/A',
                     gender: cells[COL_INDEX.GENDER]?.v || 'N/A',
                     grade: cells[COL_INDEX.GRADE]?.v || 'N/A',
